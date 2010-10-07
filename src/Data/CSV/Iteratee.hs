@@ -75,11 +75,12 @@ class CSVeable c where
 
 instance CSVeable Row where
   rowToStr s r = let sep = B.pack [c2w (csvSep s)] 
-                 in B.intercalate sep r
+                     qt = c2w (csvQuoteChar s)
+                     wrapField f = qt `B.cons` f `B.snoc` qt
+                 in B.intercalate sep . map wrapField $ r
 
 instance CSVeable MapRow where
-  rowToStr s r = let sep = B.pack [c2w (csvSep s)] 
-                 in B.intercalate sep $ M.elems r
+  rowToStr s r = rowToStr s . M.elems $ r
 
 mapCSVFile
   :: FilePath                         -- ^ Input file
@@ -100,19 +101,20 @@ mapCSVFile fi s f fo = do
     comboIter acc'@(oh,i) = procRow oh >> loop (oh, i+1)
     procRow oh = rowParser s >>= appFun >>= outputRow oh
 
-    appFun :: Row -> E.Iteratee B.ByteString IO Row
-    appFun = return . f 
+    appFun :: Maybe Row -> E.Iteratee B.ByteString IO (Maybe Row)
+    appFun (Just x) = return . Just . f $ x
+    appFun Nothing = return Nothing
 
-    outputRow :: Handle -> Row -> E.Iteratee B.ByteString IO ()
-    outputRow oh r = do
-      liftIO $ B.hPutStrLn oh . rowToStr s $ r
-      return ()
+    outputRow :: Handle -> Maybe Row -> E.Iteratee B.ByteString IO ()
+    outputRow oh (Just r) = (liftIO $ B.hPutStrLn oh . rowToStr s $ r) >> return ()
+    outputRow oh Nothing = return ()
+
 
 
 mapCSVMapFile
   :: FilePath
   -> CSVSettings
-  -> (MapRow -> MapRow)   -- ^ A fucntion to map rows onto rows
+  -> (MapRow -> MapRow)   -- ^ A function to map rows onto rows
   -> FilePath                         -- ^ Output file
   -> IO (Either SomeException Int)    -- ^ Number of rows processed 
 mapCSVMapFile fi s f fo = do
@@ -160,9 +162,9 @@ processCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
         True -> f acc' Nothing
         False -> comboIter headers acc'
     comboIter headers acc' = procRow headers acc' >>= loop headers
-    procRow [] acc' = rowParser csvs >>= (\headers -> loop headers acc') -- Fill headers if not yet filled
+    procRow [] acc' = rowParser csvs >>= (\(Just headers) -> loop headers acc') -- Fill headers if not yet filled
     procRow headers acc' = rowParser csvs >>= toMapCSV headers >>= f acc' -- Process starting w/ the second row
-    toMapCSV headers fs = E.yield (Just . M.fromList $ zip headers fs) (E.Chunks [])
+    toMapCSV headers fs = E.yield (fs >>= (Just . M.fromList . zip headers)) (E.Chunks [])
 
 
 -- | Same as 'processCSVMapFile' but treats each row as @[ByteString]@
@@ -181,26 +183,29 @@ processCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
         True -> f acc' Nothing
         False -> comboIter acc'
     comboIter acc' = procRow acc' >>= loop
-    procRow acc' = rowParser csvs >>= (\p -> f acc' (Just p))
+    procRow acc' = rowParser csvs >>= f acc'
 
 
 -- | Just collect all rows into an array. This will cancel out the incremental nature of this library.
 collectRows :: [a] -> Maybe a -> E.Iteratee B.ByteString IO [a]
-collectRows acc Nothing = E.yield acc E.EOF
+collectRows acc Nothing = E.yield acc (E.Chunks [])
 collectRows acc (Just row) = E.yield (row : acc) (E.Chunks [])
 
 -- * Parsers
 
-rowParser :: (Monad m) => CSVSettings -> E.Iteratee B.ByteString m Row
-rowParser csvs = iterParser p'
-  where
-    p' = csvrow csvs
+rowParser :: (Monad m) => CSVSettings -> E.Iteratee B.ByteString m (Maybe Row)
+rowParser csvs = iterParser $ choice [csvrow csvs, badrow]
 
-csvrow :: CSVSettings -> Parser Row
+badrow :: Parser (Maybe Row)
+badrow = P.takeWhile (notInClass "\n") *> C8.endOfLine *> return Nothing
+
+csvrow :: CSVSettings -> Parser (Maybe Row)
 csvrow c = 
   let !rowbody = (quotedField (csvQuoteChar c) <|> field) `sepBy` C8.char (csvSep c)
       !properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
-  in properrow
+  in do
+    res <- properrow
+    return $ Just res
 
 field :: Parser Field
 field = P.takeWhile isFieldChar <?> "Parsing a regular field"

@@ -14,7 +14,7 @@ import Control.Monad.IO.Class (liftIO)
 
 main = do
   h <- openFile "Examples/copied.csv" WriteMode
-  res1 <- processCSVFile "Examples/RoyalCItineraries.csv" (countAndOutput h) 0
+  res1 <- processCSVFile "Examples/test.csv" defCSVSettings (countAndOutput h) 0
   putStrLn $ show res1
 
 
