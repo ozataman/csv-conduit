@@ -197,7 +197,7 @@ rowParser :: (Monad m) => CSVSettings -> E.Iteratee B.ByteString m (Maybe Row)
 rowParser csvs = iterParser $ choice [csvrow csvs, badrow]
 
 badrow :: Parser (Maybe Row)
-badrow = P.takeWhile (notInClass "\n") *> C8.endOfLine *> return Nothing
+badrow = P.takeWhile (notInClass "\n\r") *> C8.endOfLine *> return Nothing
 
 csvrow :: CSVSettings -> Parser (Maybe Row)
 csvrow c = 
