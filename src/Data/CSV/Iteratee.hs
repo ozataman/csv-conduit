@@ -18,8 +18,8 @@ module Data.CSV.Iteratee
   , mapCSVMapFile
 
   -- * Folding Over CSV Files 
-  , processCSVFile 
-  , processCSVMapFile
+  , foldCSVFile 
+  , foldCSVMapFile
   , CSVAction
   , CSVMapAction
 
@@ -43,7 +43,7 @@ import System.IO
 
 import Data.Attoparsec as P
 import qualified Data.Attoparsec.Char8 as C8
-import Data.Attoparsec.Enum
+import Data.Attoparsec.Enumerator
 import qualified Data.Enumerator as E
 import Data.Enumerator (($$))
 import Data.Enumerator.IO (enumFile)
@@ -85,30 +85,23 @@ instance CSVeable MapRow where
 mapCSVFile
   :: FilePath                         -- ^ Input file
   -> CSVSettings                      -- ^ CSV Settings
-  -> (Row -> Row)                     -- ^ A fucntion to map rows onto rows
+  -> (Row -> Row)                     -- ^ A function to map rows onto rows
   -> FilePath                         -- ^ Output file
   -> IO (Either SomeException Int)    -- ^ Number of rows processed 
 mapCSVFile fi s f fo = do
-  oh <- openFile fo WriteMode
-  res <- E.run (enumFile fi $$ loop (oh, 0))
+  res <- foldCSVFile fi s iter (Nothing, 0)
   return $ snd `fmap` res
   where
-    loop !acc'@(oh, i) = do
-      eof <- E.isEOF 
-      case eof of
-        True -> E.yield acc' E.EOF
-        False -> comboIter acc'
-    comboIter acc'@(oh,i) = procRow oh >> loop (oh, i+1)
-    procRow oh = rowParser s >>= appFun >>= outputRow oh
+    iter :: (Maybe Handle, Int) -> Maybe Row -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
+    iter acc Nothing = E.yield acc E.EOF
+    iter (Nothing, !i) (Just r) = do
+      let row' = f r
+      oh <- liftIO $ openFile fo WriteMode
+      iter (Just oh, i) (Just r)
+    iter (Just oh, !i) (Just row) = outputRow oh (f row) >> return (Just oh, i+1)
 
-    appFun :: Maybe Row -> E.Iteratee B.ByteString IO (Maybe Row)
-    appFun (Just x) = return . Just . f $ x
-    appFun Nothing = return Nothing
-
-    outputRow :: Handle -> Maybe Row -> E.Iteratee B.ByteString IO ()
-    outputRow oh (Just r) = (liftIO $ B.hPutStrLn oh . rowToStr s $ r) >> return ()
-    outputRow oh Nothing = return ()
-
+    outputRow :: Handle -> Row -> E.Iteratee B.ByteString IO ()
+    outputRow oh = liftIO . B.hPutStrLn oh . rowToStr s
 
 
 mapCSVMapFile
@@ -118,7 +111,7 @@ mapCSVMapFile
   -> FilePath                         -- ^ Output file
   -> IO (Either SomeException Int)    -- ^ Number of rows processed 
 mapCSVMapFile fi s f fo = do
-  res <- processCSVMapFile fi s mapIter (Nothing, 0)
+  res <- foldCSVMapFile fi s mapIter (Nothing, 0)
   return $ snd `fmap` res
   where
     mapIter :: (Maybe Handle, Int) -> Maybe MapRow -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
@@ -148,13 +141,13 @@ type CSVMapAction a = a -> Maybe MapRow -> E.Iteratee B.ByteString IO a
 
 -- | Open & fold over the CSV file. Processing starts on row 2 and each row is represented as a Map
 -- using first row as column headers
-processCSVMapFile
+foldCSVMapFile
   :: FilePath -- ^ File to open as a CSV file
   -> CSVSettings
   -> CSVMapAction a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
   -> a  -- ^ Initial accumulator
   -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
-processCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
+foldCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
   where
     loop !headers !acc' = do
       eof <- E.isEOF 
@@ -167,15 +160,15 @@ processCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
     toMapCSV headers fs = E.yield (fs >>= (Just . M.fromList . zip headers)) (E.Chunks [])
 
 
--- | Same as 'processCSVMapFile' but treats each row as @[ByteString]@
+-- | Same as 'foldCSVMapFile' but treats each row as @[ByteString]@
 -- Processing starts on row 1
-processCSVFile
+foldCSVFile
   :: FilePath -- ^ File to open as a CSV file
   -> CSVSettings
   -> CSVAction a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
   -> a  -- ^ Initial accumulator
   -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
-processCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
+foldCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
   where
     loop !acc' = do
       eof <- E.isEOF 
@@ -201,16 +194,16 @@ badrow = P.takeWhile (notInClass "\n\r") *> C8.endOfLine *> return Nothing
 
 csvrow :: CSVSettings -> Parser (Maybe Row)
 csvrow c = 
-  let !rowbody = (quotedField (csvQuoteChar c) <|> field) `sepBy` C8.char (csvSep c)
+  let !rowbody = (quotedField (csvQuoteChar c) <|> (field c)) `sepBy` C8.char (csvSep c)
       !properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
   in do
     res <- properrow
     return $ Just res
 
-field :: Parser Field
-field = P.takeWhile isFieldChar <?> "Parsing a regular field"
+field :: CSVSettings -> Parser Field
+field s = P.takeWhile (isFieldChar s) <?> "Parsing a regular field"
 
-isFieldChar = notInClass ",\n\r\""
+isFieldChar s = notInClass $ "\n\r" ++ [csvSep s, csvQuoteChar s]
 
 quotedField :: Char -> Parser Field
 quotedField c = let w = c2w c in do
