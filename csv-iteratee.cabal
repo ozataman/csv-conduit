@@ -24,4 +24,5 @@ Library
     , bytestring
     , enumerator >= 0.4 && <0.5
     , attoparsec-enumerator >= 0.2
+    , attoparsec-enum >= 0.1
     , transformers >= 0.2

@@ -43,7 +43,7 @@ import System.IO
 
 import Data.Attoparsec as P
 import qualified Data.Attoparsec.Char8 as C8
-import Data.Attoparsec.Enumerator
+import Data.Attoparsec.Enum
 import qualified Data.Enumerator as E
 import Data.Enumerator (($$))
 import Data.Enumerator.IO (enumFile)
