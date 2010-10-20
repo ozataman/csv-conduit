@@ -83,10 +83,10 @@ instance CSVeable MapRow where
   rowToStr s r = rowToStr s . M.elems $ r
 
 mapCSVFile
-  :: FilePath                         -- ^ Input file
-  -> CSVSettings                      -- ^ CSV Settings
-  -> (Row -> Row)                     -- ^ A function to map rows onto rows
-  -> FilePath                         -- ^ Output file
+  :: FilePath   -- ^ Input file
+  -> CSVSettings    -- ^ CSV Settings
+  -> (Row -> [Row])   -- ^ A function to map a row onto rows
+  -> FilePath   -- ^ Output file
   -> IO (Either SomeException Int)    -- ^ Number of rows processed 
 mapCSVFile fi s f fo = do
   res <- foldCSVFile fi s iter (Nothing, 0)
@@ -98,16 +98,13 @@ mapCSVFile fi s f fo = do
       let row' = f r
       oh <- liftIO $ openFile fo WriteMode
       iter (Just oh, i) (Just r)
-    iter (Just oh, !i) (Just row) = outputRow oh (f row) >> return (Just oh, i+1)
-
-    outputRow :: Handle -> Row -> E.Iteratee B.ByteString IO ()
-    outputRow oh = liftIO . B.hPutStrLn oh . rowToStr s
+    iter (Just oh, !i) (Just row) = outputRow s oh (f row) >> return (Just oh, i+1)
 
 
 mapCSVMapFile
   :: FilePath
   -> CSVSettings
-  -> (MapRow -> MapRow)   -- ^ A function to map rows onto rows
+  -> (MapRow -> [MapRow])   -- ^ A function to map a row onto rows
   -> FilePath                         -- ^ Output file
   -> IO (Either SomeException Int)    -- ^ Number of rows processed 
 mapCSVMapFile fi s f fo = do
@@ -117,17 +114,18 @@ mapCSVMapFile fi s f fo = do
     mapIter :: (Maybe Handle, Int) -> Maybe MapRow -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
     mapIter acc Nothing = E.yield acc E.EOF
     mapIter (Nothing, !i) (Just r) = do
-      let row' = f r
-      oh <- liftIO $ do
-        oh' <- openFile fo WriteMode
-        B.hPutStrLn oh' . rowToStr s . M.keys $ row'
-        return oh'
-      mapIter (Just oh, i) (Just r)
-    mapIter (Just oh, !i) (Just row) = outputRow oh (f row) >> return (Just oh, i+1)
+      case f r of
+        [] -> return (Nothing, i) -- the fn did not return any rows at all!
+        (x:_) -> do
+          oh <- liftIO $ do
+            oh' <- openFile fo WriteMode
+            B.hPutStrLn oh' . rowToStr s . M.keys $ x
+            return oh'
+          mapIter (Just oh, i) (Just r)
+    mapIter (Just oh, !i) (Just row) = outputRow s oh (f row) >> return (Just oh, i+1)
 
-    outputRow :: Handle -> MapRow -> E.Iteratee B.ByteString IO ()
-    outputRow oh = liftIO . B.hPutStrLn oh . rowToStr s
-
+outputRow :: CSVeable r => CSVSettings -> Handle -> [r] -> E.Iteratee B.ByteString IO ()
+outputRow s oh = liftIO . mapM_ (B.hPutStrLn oh) . map (rowToStr s)
 
 -- | An iteratee that processes each row of a CSV file and updates the accumulator.
 --

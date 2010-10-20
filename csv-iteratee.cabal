@@ -1,5 +1,5 @@
 Name:                csv-iteratee
-Version:             0.2
+Version:             0.3
 Synopsis:            An iteratee-based fast and constant-memory CSV parser library for Haskell
 Homepage:            http://github.com/ozataman/csv-iteratee
 License:             BSD3
