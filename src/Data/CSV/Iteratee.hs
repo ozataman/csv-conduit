@@ -21,7 +21,6 @@ module Data.CSV.Iteratee
   , foldCSVMapFile
   , foldCSVFile 
   , CSVAction
-  , CSVMapAction
 
   -- * Primitive Iteratees
   , collectRows
@@ -155,20 +154,15 @@ data (CSVeable r) => ParsedRow r = ParsedRow (Maybe r) | EOF
 
 -- | An iteratee that processes each row of a CSV file and updates the accumulator.
 --
--- You would implement one of these to use with 'foldCSVFile' function
-type CSVAction a = a -> ParsedRow Row -> E.Iteratee B.ByteString IO a
-
--- | Same as 'CSVAction' but operates on Map rows.
---
--- You would implement one of these to use with 'foldCSVMapFile' function
-type CSVMapAction a = a -> ParsedRow MapRow -> E.Iteratee B.ByteString IO a
+-- You would implement one of these to use with the 'foldCSVFile' or 'foldCSVMapFile' functions
+type CSVAction r a = a -> ParsedRow r -> E.Iteratee B.ByteString IO a
 
 -- | Open & fold over the CSV file. Processing starts on row 2 and each row is represented as a Map
 -- using first row as column headers.
 foldCSVMapFile
   :: FilePath -- ^ File to open as a CSV file
   -> CSVSettings
-  -> CSVMapAction a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
+  -> CSVAction MapRow a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
   -> a  -- ^ Initial accumulator
   -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
 foldCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
@@ -190,7 +184,7 @@ foldCSVMapFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
 foldCSVFile
   :: FilePath -- ^ File to open as a CSV file
   -> CSVSettings
-  -> CSVAction a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
+  -> CSVAction Row a -- ^ An iteratee that processes each row of a CSV file and updates the accumulator
   -> a  -- ^ Initial accumulator
   -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
 foldCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
@@ -205,9 +199,9 @@ foldCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
 
 
 -- | Just collect all rows into an array. This will cancel out the incremental nature of this library.
-collectRows :: [a] -> Maybe a -> E.Iteratee B.ByteString IO [a]
-collectRows acc Nothing = E.yield acc (E.Chunks [])
-collectRows acc (Just row) = E.yield (row : acc) (E.Chunks [])
+collectRows :: CSVeable r => CSVAction r [r]
+collectRows acc EOF = E.yield acc (E.Chunks [])
+collectRows acc (ParsedRow (Just r)) = E.yield (r : acc) (E.Chunks [])
 
 -- * Parsers
 
