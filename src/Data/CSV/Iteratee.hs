@@ -11,6 +11,7 @@ module Data.CSV.Iteratee
 
   , CSVeable
   , rowToStr
+  , fileHeaders
   , foldCSVFile
 
   , ParsedRow(..) 
@@ -56,40 +57,17 @@ import qualified Data.Enumerator as E
 import Data.Enumerator (($$))
 import Data.Enumerator.IO (enumFile)
 import Data.Word (Word8)
+import Safe (headMay)
 
--- | Settings for a CSV file. This library is intended to be flexible and offer a way to process the majority of text data files out there.
-data CSVSettings = CSVS
-  { 
-    -- | Separator character to be used in between fields
-    csvSep :: Char          
-
-    -- | Quote character that may sometimes be present around fields. If 'Nothing' is given, the library will never expect quotation even if it is present.
-  , csvQuoteChar :: Maybe Char
-  
-    -- | Quote character that should be used in the output.
-  , csvOutputQuoteChar :: Char
-  
-    -- | Field separator that should be used in the output.
-  , csvOutputColSep :: Char
-  }
-
--- | Default settings for a CSV file. See source for what they are.
-defCSVSettings :: CSVSettings
-defCSVSettings = CSVS
-  { csvSep = ','
-  , csvQuoteChar = Just '"'
-  , csvOutputQuoteChar = '"'
-  , csvOutputColSep = ','
-  }
-
-type Row = [Field]
-type Field = B.ByteString
-type MapRow = M.Map B.ByteString B.ByteString
+import Data.CSV.Data
 
 class CSVeable r where
 
   -- | Convert a CSV row into strict ByteString equivalent.
   rowToStr :: CSVSettings -> r -> B.ByteString
+
+  -- | Possibly return headers for a list of rows.
+  fileHeaders :: [r] -> Maybe Row
 
   -- | Open & fold over the CSV file. 
   -- Processing starts on row 2 for MapRow instance to use first row as column
@@ -106,6 +84,8 @@ instance CSVeable Row where
                      wrapField f = qt `B.cons` f `B.snoc` qt
                  in B.intercalate sep . map wrapField $ r
   
+  fileHeaders _ = Nothing
+
   foldCSVFile fp csvs f acc = E.run (enumFile fp $$ loop acc)
     where
       loop !acc' = do
@@ -118,6 +98,8 @@ instance CSVeable Row where
 
 instance CSVeable MapRow where
   rowToStr s r = rowToStr s . M.elems $ r
+
+  fileHeaders rs = headMay rs >>= return . M.keys
 
   foldCSVFile fp csvs f !acc = E.run (enumFile fp $$ loop [] acc)
     where
@@ -139,19 +121,27 @@ instance CSVeable MapRow where
 readCSVFile :: (CSVeable r) => CSVSettings  -- ^ CSV settings
             -> FilePath   -- ^ FilePath
             -> IO (Either SomeException [r])  -- ^ Collected data
-readCSVFile s fp = foldCSVFile fp s collectRows []
+readCSVFile s fp = do
+  res <- foldCSVFile fp s collectRows []
+  return $ case res of
+    Left e -> Left e
+    Right rs -> Right (reverse rs)
 
 writeCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
              -> FilePath  -- ^ Target file path
              -> [r]   -- ^ Data to be output
              -> IO Int  -- ^ Number of rows written
 writeCSVFile s fp rs = 
-  let outputRows h = foldM (step h) 0  . map (rowToStr s) $ rs
+  let doOutput h = writeHeaders h >> outputRows h
+      writeHeaders h = case fileHeaders rs of
+        Just hs -> B.hPutStrLn h . rowToStr s $ hs
+        Nothing -> return ()
+      outputRows h = foldM (step h) 0  . map (rowToStr s) $ rs
       step h acc x = (B.hPutStrLn h x) >> return (acc+1)
   in bracket
       (openFile fp WriteMode)
       (hClose)
-      (outputRows)
+      (doOutput)
 
 -- | Take a CSV file, 
 -- apply function to each of its rows and save the resulting rows into a new file.
@@ -249,6 +239,7 @@ funToIter f = iterf
 collectRows :: CSVeable r => CSVAction r [r]
 collectRows acc EOF = E.yield acc (E.Chunks [])
 collectRows acc (ParsedRow (Just r)) = E.yield (r : acc) (E.Chunks [])
+collectRows acc (ParsedRow Nothing) = E.yield acc (E.Chunks [])
 
 -- * Parsers
 
