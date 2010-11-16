@@ -238,7 +238,8 @@ funToIter f = iterf
 -- | Just collect all rows into an array. This will cancel out the incremental nature of this library.
 collectRows :: CSVeable r => CSVAction r [r]
 collectRows acc EOF = E.yield acc (E.Chunks [])
-collectRows acc (ParsedRow (Just r)) = E.yield (r : acc) (E.Chunks [])
+collectRows acc (ParsedRow (Just r)) = let a' = (r:acc) 
+                                       in a' `seq` E.yield a' (E.Chunks [])
 collectRows acc (ParsedRow Nothing) = E.yield acc (E.Chunks [])
 
 -- * Parsers
