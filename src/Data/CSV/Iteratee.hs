@@ -38,6 +38,7 @@ import Control.Exception (bracket, SomeException)
 import Control.Monad (mzero, mplus, foldM)
 import Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 import Data.ByteString.Internal (c2w)
 import qualified Data.Map as M
 import System.Directory
@@ -135,21 +136,22 @@ instance CSVeable Row where
         case res0 of
           Left x -> return $ Left x
           Right i -> do 
-            res <- foldCSVFile fi s iter (Nothing, i)
+            res <- foldCSVFile fi s (iter fi) (Nothing, i)
             return $ fmap snd res
 
-      iter :: (Maybe Handle, Int) 
+      iter :: FilePath
+           -> (Maybe Handle, Int) 
            -> ParsedRow Row 
            -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
-      iter acc@(oh, i) EOF = case oh of
+      iter fi acc@(oh, i) EOF = case oh of
         Just oh' -> liftIO (hClose oh') >> E.yield (Nothing, i) E.EOF
         Nothing -> E.yield acc E.EOF
-      iter acc (ParsedRow Nothing) = return acc
-      iter (Nothing, !i) (ParsedRow (Just r)) = do
+      iter fi acc (ParsedRow Nothing) = return acc
+      iter fi (Nothing, !i) (ParsedRow (Just r)) = do
         let row' = f r
         oh <- liftIO $ openFile fo AppendMode
-        iter (Just oh, i) (ParsedRow (Just r))
-      iter (Just oh, !i) (ParsedRow (Just r)) = outputRow s oh (f r) >> return (Just oh, i+1)
+        iter fi (Just oh, i) (ParsedRow (Just r))
+      iter fi (Just oh, !i) (ParsedRow (Just r)) = outputRow s oh (f r) >> return (Just oh, i+1)
 
 
 
@@ -203,17 +205,20 @@ instance CSVeable MapRow where
         case res0 of
           Left x -> return $ Left x
           Right i -> do 
-            res <- foldCSVFile fi s iter (Nothing, i)
+            res <- foldCSVFile fi s (iter fi) (Nothing, i)
             return $ fmap snd res
 
-      iter :: (Maybe Handle, Int) 
+      addFileSource fi r = M.insert "FromFile" (B8.pack fi) r
+
+      iter :: FilePath
+           -> (Maybe Handle, Int) 
            -> ParsedRow MapRow 
            -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
-      iter acc@(oh, i) EOF = case oh of
+      iter fi acc@(oh, i) EOF = case oh of
         Just oh' -> liftIO (hClose oh') >> E.yield (Nothing, i) E.EOF
         Nothing -> E.yield acc E.EOF
-      iter acc (ParsedRow Nothing) = return acc
-      iter (Nothing, !i) (ParsedRow (Just r)) = do
+      iter fi acc (ParsedRow Nothing) = return acc
+      iter fi (Nothing, !i) (ParsedRow (Just r)) = do
         case f r of
           [] -> return (Nothing, i) -- the fn did not return any rows at all!
           (x:_) -> do
@@ -222,10 +227,14 @@ instance CSVeable MapRow where
               oh' <- openFile fo AppendMode
               case exist of
                 True -> return ()
-                False -> B.hPutStrLn oh' . rowToStr s . M.keys $ x
+                False -> B.hPutStrLn oh' . rowToStr s . M.keys . (addFileSource fi) $ x
               return oh'
-            iter (Just oh, i) (ParsedRow (Just r))
-      iter (Just oh, !i) (ParsedRow (Just r)) = outputRow s oh (f r) >> return (Just oh, i+1)
+            iter fi (Just oh, i) (ParsedRow (Just r))
+      iter fi (Just oh, !i) (ParsedRow (Just r)) = 
+        let rows = f . addFileSource fi $ r
+        in do
+          outputRow s oh rows 
+          return (Just oh, i+1)
 
 
 ------------------------------------------------------------------------------
