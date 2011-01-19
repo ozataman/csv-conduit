@@ -19,7 +19,7 @@ data CSVSettings = CSVS
   , csvQuoteChar :: Maybe Char
   
     -- | Quote character that should be used in the output.
-  , csvOutputQuoteChar :: Char
+  , csvOutputQuoteChar :: Maybe Char
   
     -- | Field separator that should be used in the output.
   , csvOutputColSep :: Char
@@ -30,7 +30,7 @@ defCSVSettings :: CSVSettings
 defCSVSettings = CSVS
   { csvSep = ','
   , csvQuoteChar = Just '"'
-  , csvOutputQuoteChar = '"'
+  , csvOutputQuoteChar = Just '"'
   , csvOutputColSep = ','
   } 
 
