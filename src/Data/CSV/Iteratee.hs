@@ -29,6 +29,13 @@ module Data.CSV.Iteratee
 
   -- * Primitive Iteratees
   , collectRows
+  , outputRowIter
+  , outputRowsIter
+
+  -- * Other Utilities
+  , outputRow
+  , outputRows
+  , writeHeaders
   )
 
 where
@@ -98,11 +105,12 @@ class CSVeable r where
     res <- foldCSVFile fi s iter (Nothing, 0)
     return $ snd `fmap` res
     where
-      iter acc (ParsedRow (Just r)) = chain (f r) acc
-      iter acc x = fileSink s fo acc x
+      iter !acc (ParsedRow (Just !r)) = foldM chain acc (f r) 
+      iter !acc x = fileSink s fo acc x
 
-      chain (r:rs) acc = singleSink r acc >>= chain rs
-      singleSink x acc = fileSink s fo acc (ParsedRow (Just x))
+      chain !acc !r = singleSink r acc
+
+      singleSink !x !acc = fileSink s fo acc (ParsedRow (Just x))
 
 
   ----------------------------------------------------------------------------
@@ -117,11 +125,11 @@ class CSVeable r where
 ------------------------------------------------------------------------------
 -- | 'Row' instance for 'CSVeable'
 instance CSVeable Row where
-  rowToStr s r = 
+  rowToStr s !r = 
     let 
       sep = B.pack [c2w (csvOutputColSep s)] 
-      wrapField f = case (csvOutputQuoteChar s) of
-        Just x -> let qt = c2w x
+      wrapField !f = case (csvOutputQuoteChar s) of
+        Just !x -> let qt = c2w x
                   in qt `B.cons` f `B.snoc` qt
         otherwise -> f
     in B.intercalate sep . map wrapField $ r
@@ -162,7 +170,7 @@ instance CSVeable Row where
         iter (Just oh, i) r
 
       iter (Just oh, !i) (ParsedRow (Just r)) = do 
-        outputRow csvs oh r 
+        outputRowIter csvs oh r 
         yield (Just oh, i+1) (E.Chunks [])
 
 
@@ -191,7 +199,7 @@ instance CSVeable Row where
         oh <- liftIO $ openFile fo AppendMode
         iter fi (Just oh, i) (ParsedRow (Just r))
       iter fi (Just oh, !i) (ParsedRow (Just r)) = do 
-        outputRows s oh (f r) 
+        outputRowsIter s oh (f r) 
         return (Just oh, i+1)
 
 
@@ -203,7 +211,7 @@ instance CSVeable MapRow where
 
   fileHeaders rs = headMay rs >>= return . M.keys
 
-  iterCSV csvs f acc = loop ([], acc)
+  iterCSV csvs f !acc = loop ([], acc)
     where
       loop (headers, !acc') = do
         eof <- E.isEOF 
@@ -211,16 +219,19 @@ instance CSVeable MapRow where
           True -> f acc' EOF
           False -> comboIter headers acc'
 
-      comboIter headers acc' = do 
+      comboIter !headers !acc' = do 
         a <- procRow headers acc' 
         loop (headers, a)
 
       -- Fill headers if not yet filled
-      procRow [] acc' = rowParser csvs >>= (\(Just hs) -> loop (hs, acc'))
+      procRow [] !acc' = rowParser csvs >>= (\(Just hs) -> loop (hs, acc'))
 
       -- Process starting w/ the second row
-      procRow headers acc' = rowParser csvs >>= toMapCSV headers >>= f acc' . ParsedRow 
-      toMapCSV headers fs = yield (fs >>= (Just . M.fromList . zip headers)) (E.Chunks [])
+      procRow !headers !acc' = rowParser csvs >>= 
+                               toMapCSV headers >>= 
+                               f acc' . ParsedRow 
+
+      toMapCSV !headers !fs = yield (fs >>= (Just . M.fromList . zip headers)) (E.Chunks [])
 
   foldCSVFile fp csvs f !acc = E.run (enumFile fp $$ iterCSV csvs f acc)
 
@@ -230,18 +241,18 @@ instance CSVeable MapRow where
       mapIter :: (Maybe Handle, Int) 
               -> ParsedRow MapRow 
               -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
-      mapIter acc@(oh, i) EOF = case oh of
+      mapIter acc@(oh, !i) EOF = case oh of
         Just oh' -> liftIO (hClose oh') >> yield (Nothing, i) E.EOF
         Nothing -> yield acc E.EOF
-      mapIter acc (ParsedRow Nothing) = return acc
-      mapIter (Nothing, !i) (ParsedRow (Just r)) = do
+      mapIter !acc (ParsedRow Nothing) = return acc
+      mapIter (Nothing, !i) (ParsedRow (Just (!r))) = do
         oh <- liftIO $ do
           oh' <- openFile fo WriteMode
           B.hPutStrLn oh' . rowToStr s . M.keys $ r
           return oh'
         mapIter (Just oh, i) (ParsedRow (Just r))
-      mapIter (Just oh, !i) (ParsedRow (Just r)) = do
-        outputRow s oh r 
+      mapIter (Just oh, !i) (ParsedRow (Just (!r))) = do
+        outputRowIter s oh r 
         return (Just oh, i+1)
 
 
@@ -279,7 +290,7 @@ instance CSVeable MapRow where
       iter fi (Just oh, !i) (ParsedRow (Just r)) = 
         let rows = f . addFileSource fi $ r
         in do
-          outputRows s oh rows 
+          outputRowsIter s oh rows 
           return (Just oh, i+1)
 
 
@@ -300,11 +311,8 @@ writeCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
              -> [r]   -- ^ Data to be output
              -> IO Int  -- ^ Number of rows written
 writeCSVFile s fp rs = 
-  let doOutput h = writeHeaders h >> outputRows h
-      writeHeaders h = case fileHeaders rs of
-        Just hs -> B.hPutStrLn h . rowToStr s $ hs
-        Nothing -> return ()
-      outputRows h = foldM (step h) 0  . map (rowToStr s) $ rs
+  let doOutput h = writeHeaders s h rs >> outputRowsIter h
+      outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
       step h acc x = (B.hPutStrLn h x) >> return (acc+1)
   in bracket
       (openFile fp WriteMode)
@@ -314,12 +322,26 @@ writeCSVFile s fp rs =
 
 ------------------------------------------------------------------------------
 -- | Output given row into given handle
-outputRow :: CSVeable r => CSVSettings -> Handle -> r -> E.Iteratee B.ByteString IO ()
-outputRow s oh = liftIO . B.hPutStrLn oh . rowToStr s
+outputRow :: CSVeable r => CSVSettings -> Handle -> r -> IO ()
+outputRow s oh = B.hPutStrLn oh . rowToStr s
 
 
-outputRows :: CSVeable r => CSVSettings -> Handle -> [r] -> E.Iteratee B.ByteString IO ()
-outputRows s oh = liftIO . mapM_ (B.hPutStrLn oh) . map (rowToStr s)
+outputRows :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
+outputRows s oh = mapM_ (outputRow s oh)
+
+
+writeHeaders :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
+writeHeaders s h rs = case fileHeaders rs of
+  Just hs -> B.hPutStrLn h . rowToStr s $ hs
+  Nothing -> return ()
+
+
+outputRowIter :: CSVeable r => CSVSettings -> Handle -> r -> E.Iteratee B.ByteString IO ()
+outputRowIter s oh = liftIO . outputRow s oh
+
+
+outputRowsIter :: CSVeable r => CSVSettings -> Handle -> [r] -> E.Iteratee B.ByteString IO ()
+outputRowsIter s oh rs = mapM_ (outputRowIter s oh) rs
 
 
 ------------------------------------------------------------------------------
