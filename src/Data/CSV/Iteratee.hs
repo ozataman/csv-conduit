@@ -20,6 +20,7 @@ module Data.CSV.Iteratee
   -- * Reading / Writing CSV Files
   , readCSVFile
   , writeCSVFile
+  , appendCSVFile
 
   -- * Folding Over CSV Files 
   -- | These enumerators generalize the map* family of functions with a running accumulator.
@@ -42,7 +43,7 @@ where
 
 import Control.Applicative hiding (many)
 import Control.Exception (bracket, SomeException)
-import Control.Monad (mzero, mplus, foldM)
+import Control.Monad (mzero, mplus, foldM, when)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -319,6 +320,23 @@ writeCSVFile s fp rs =
       (hClose)
       (doOutput)
 
+------------------------------------------------------------------------------
+appendCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
+             -> FilePath  -- ^ Target file path
+             -> [r]   -- ^ Data to be output
+             -> IO Int  -- ^ Number of rows written
+appendCSVFile s fp rs = 
+  let doOutput (c,h) = when c (writeHeaders s h rs) >> outputRowsIter h
+      outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
+      step h acc x = (B.hPutStrLn h x) >> return (acc+1)
+      chkOpen = do
+        c <- doesFileExist fp >>= return . not
+        h <- openFile fp AppendMode
+        return (c, h)
+  in bracket
+      (chkOpen)
+      (hClose . snd)
+      (doOutput)
 
 ------------------------------------------------------------------------------
 -- | Output given row into given handle
