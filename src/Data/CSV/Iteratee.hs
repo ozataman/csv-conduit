@@ -51,8 +51,9 @@ import Data.ByteString.Internal (c2w)
 import qualified Data.Map as M
 import System.Directory
 import System.IO
+import System.PosixCompat.Files (getFileStatus, fileSize)
 
-import Data.Attoparsec as P
+import Data.Attoparsec as P hiding (take)
 import qualified Data.Attoparsec.Char8 as C8
 -- import Data.Attoparsec.Enum
 import Data.Attoparsec.Enumerator
@@ -330,9 +331,15 @@ appendCSVFile s fp rs =
       outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
       step h acc x = (B.hPutStrLn h x) >> return (acc+1)
       chkOpen = do
-        c <- doesFileExist fp >>= return . not
+        writeHeaders <- do
+          fe <- doesFileExist fp 
+          if fe
+          	then do
+          	  fs <- getFileStatus fp >>= return . fileSize
+          	  return $ if fs > 0 then False else True
+            else return True
         h <- openFile fp AppendMode
-        return (c, h)
+        return (writeHeaders, h)
   in bracket
       (chkOpen)
       (hClose . snd)

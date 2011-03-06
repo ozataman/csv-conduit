@@ -30,4 +30,6 @@ Library
     , attoparsec-enumerator >= 0.2.0.3
     , transformers >= 0.2
     , safe
-
+    , unix-compat >= 0.2.1.1
+  extensions:
+    ScopedTypeVariables
