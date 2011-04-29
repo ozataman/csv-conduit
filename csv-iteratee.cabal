@@ -1,6 +1,6 @@
 Name:                csv-iteratee
-Version:             0.7.1.4
-Synopsis:            An iteratee-based fast and constant-memory CSV parser library for Haskell
+Version:             0.8
+Synopsis:            An enumerator-based, flexible, fast, constant-memory CSV parser library for Haskell.
 Homepage:            http://github.com/ozataman/csv-iteratee
 License:             BSD3
 License-file:        LICENSE
@@ -22,12 +22,12 @@ Library
     , Data.CSV.Utils
   build-depends:
       attoparsec >= 0.8 && < 0.9
+    , attoparsec-enumerator >= 0.2.0.3
     , base >= 4 && < 5
     , containers >= 0.3
     , directory
     , bytestring
     , enumerator >= 0.4.5 && < 0.5
-    , attoparsec-enumerator >= 0.2.0.3
     , transformers >= 0.2
     , safe
     , unix-compat >= 0.2.1.1
