@@ -1,16 +1,73 @@
 # README
 
-## CSV files
+## CSV Files and Haskell
 
-CSV files are the de-facto standard in arbitrary data retrieval, transfer or hand-off occasions. They are text-based, which means almost any application can be coerced to understand them. They are only limited by the OS on how much data they can contain, which makes them very convenient in general use.
+CSV files are the de-facto standard in many cases of data transfer,
+particularly when dealing with enterprise application or disparate database
+systems.
 
-However, in practice, they have a number of downsides:
-  - They suffer from a widespread lack of standards. Everybody seems to pick different separators, quotation characters and line endings.
-  - Most programs/languages load them in their entirety, which causes problems with larger data files.
+While there are a number of csv libraries in Haskell, at the time of this
+project's start in 2010, there wasn't one that provided:
+
+* Full flexibility in quote characters, separators, input/output
+* Constant space operation
+* Robust parsing and error resiliency
+* Fast operation
+* Convenient interface that supports a variety of use cases
 
 
 ## This package
 
-This package is intended as a blazing-fast CSV parser/processor that can operate in constant-space using iteratees.
+csv-iteratee is an enumerator-based CSV parsing library that is easy to use, flexible and fast.
 
+
+### Introduction
+
+* ByteStrings are used for everything
+* There are 2 basic row types and they implement *exactly* the same operations,
+  so you can chose the right one for the job at hand:
+  - type MapRow :: Map ByteString ByteString
+  - type Row :: [ByteString]
+* Folding over a CSV file can be thought of as the most basic operation.
+* Higher level convenience functions are provided to "map" over CSV files,
+  modifying and transforming them along the way.
+* Helpers are provided for simple input/output of CSV files for simple use
+  cases.
+* For extreme / advanced use cases, the user can drop down to the
+  Enumerator/Iteratee level and do interleaved IO among other things.
+
+### API Docs
+
+The API is quite well documented and I would encourage you to keep it handy.
+
+### Speed
+
+While fast operation is of concern, I have so far cared more about correct
+operation and a flexible API. Please let me know if you notice any performance
+regressions or optimization opportunities.
+
+
+### Usage Examples
+
+#### Example 1: Basic Operation 
+
+    {-# LANGUAGE OverloadedStrings #-}
+
+    import qualified Data.Map as M
+    import Data.Map ((!))
+
+    -- Naive whitespace stripper
+    strip = reverse . B.dropWhile isChar . reverse . B.dropWhile isChar
+
+    -- A function that takes a row and "emits" zero or more rows as output.
+    processRow :: MapRow -> [MapRow]
+    processRow row = [M.insert "Column1" fixedCol row]
+      where fixedCol = strip (row ! "Column1")
+
+    main = mapCSVFile "InputFile.csv" defCSVSettings procesRow "OutputFile.csv"
+
+and we are done. 
+
+
+Further examples to be provided at a later time.
 
