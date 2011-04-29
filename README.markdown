@@ -81,6 +81,8 @@ Further examples to be provided at a later time.
 
 ### TODO - Next Steps
 
+* Need to think about specializing an Exception type for the library and
+  properly notifying the user when parsing-related problems occur.
 * Some operations can be further broken down to their atoms, increasing the
   flexibility of the library.
 * The CSVeable typeclass can be refactored to have a more minimal definition.

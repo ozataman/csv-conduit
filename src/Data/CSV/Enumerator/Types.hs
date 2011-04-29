@@ -25,7 +25,13 @@ data CSVSettings = CSVS
   , csvOutputColSep :: Char
   } deriving (Read, Show, Eq)
 
--- | Default settings for a CSV file. See source for what they are.
+-- | Default settings for a CSV file. 
+--
+-- > csvSep = ','
+-- > csvQuoteChar = Just '"'
+-- > csvOutputQuoteChar = Just '"'
+-- > csvOutputColSep = ','
+--
 defCSVSettings :: CSVSettings
 defCSVSettings = CSVS
   { csvSep = ','
