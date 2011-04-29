@@ -7,7 +7,7 @@ particularly when dealing with enterprise application or disparate database
 systems.
 
 While there are a number of csv libraries in Haskell, at the time of this
-project's start in 2010, there wasn't one that provided:
+project's start in 2010, there wasn't one that provided all of the following:
 
 * Full flexibility in quote characters, separators, input/output
 * Constant space operation
@@ -15,10 +15,14 @@ project's start in 2010, there wasn't one that provided:
 * Fast operation
 * Convenient interface that supports a variety of use cases
 
+This library is an attempt to close this gap.
+
 
 ## This package
 
-csv-iteratee is an enumerator-based CSV parsing library that is easy to use, flexible and fast.
+csv-iteratee is an enumerator-based CSV parsing library that is easy to use,
+flexible and fast. Furthermore, it provides ways to use constant-space during
+operation, which is absolutely critical in many real world use cases.
 
 
 ### Introduction
@@ -26,8 +30,8 @@ csv-iteratee is an enumerator-based CSV parsing library that is easy to use, fle
 * ByteStrings are used for everything
 * There are 2 basic row types and they implement *exactly* the same operations,
   so you can chose the right one for the job at hand:
-  - type MapRow :: Map ByteString ByteString
-  - type Row :: [ByteString]
+  - type MapRow = Map ByteString ByteString
+  - type Row = [ByteString]
 * Folding over a CSV file can be thought of as the most basic operation.
 * Higher level convenience functions are provided to "map" over CSV files,
   modifying and transforming them along the way.
@@ -53,11 +57,13 @@ regressions or optimization opportunities.
 
     {-# LANGUAGE OverloadedStrings #-}
 
+    import Data.CSV.Iteratee
+    import Data.Char (isSpace)
     import qualified Data.Map as M
     import Data.Map ((!))
 
     -- Naive whitespace stripper
-    strip = reverse . B.dropWhile isChar . reverse . B.dropWhile isChar
+    strip = reverse . B.dropWhile isSpace . reverse . B.dropWhile isSpace
 
     -- A function that takes a row and "emits" zero or more rows as output.
     processRow :: MapRow -> [MapRow]
@@ -70,4 +76,17 @@ and we are done.
 
 
 Further examples to be provided at a later time.
+
+
+
+### TODO - Next Steps
+
+* Some operations can be further broken down to their atoms, increasing the
+  flexibility of the library.
+* The CSVeable typeclass can be refactored to have a more minimal definition.
+* Operating on Text in addition to ByteString would be phenomenal.
+* A test-suite needs to be added.
+
+
+Any and all kinds of help is much appreciated!
 
