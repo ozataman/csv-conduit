@@ -20,7 +20,7 @@ This library is an attempt to close this gap.
 
 ## This package
 
-csv-iteratee is an enumerator-based CSV parsing library that is easy to use,
+csv-enumerator is an enumerator-based CSV parsing library that is easy to use,
 flexible and fast. Furthermore, it provides ways to use constant-space during
 operation, which is absolutely critical in many real world use cases.
 
@@ -57,7 +57,7 @@ regressions or optimization opportunities.
 
     {-# LANGUAGE OverloadedStrings #-}
 
-    import Data.CSV.Iteratee
+    import Data.CSV.Enumerator
     import Data.Char (isSpace)
     import qualified Data.Map as M
     import Data.Map ((!))

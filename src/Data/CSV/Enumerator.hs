@@ -2,7 +2,7 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-module Data.CSV.Iteratee 
+module Data.CSV.Enumerator 
   ( 
    -- * CSV Data types
     Row   -- Simply @[ByteString]@
@@ -63,7 +63,7 @@ import Data.Enumerator.Binary (enumFile)
 import Data.Word (Word8)
 import Safe (headMay)
 
-import Data.CSV.Data
+import Data.CSV.Enumerator.Types
 
 class CSVeable r where
 

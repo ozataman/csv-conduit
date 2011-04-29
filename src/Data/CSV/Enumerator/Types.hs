@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 
 
-module Data.CSV.Data where
+module Data.CSV.Enumerator.Types where
 
 
 import qualified Data.ByteString as B
