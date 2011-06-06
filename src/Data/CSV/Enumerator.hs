@@ -357,6 +357,21 @@ outputRows :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
 outputRows s oh = mapM_ (outputRow s oh)
 
 
+-- | Expand or contract the given 'MapRow' to contain exactly the given set of
+-- columns and then write the row into the given 'Handle'.
+--
+-- This is helpful in filtering the columns or perhaps combining a number of
+-- files that don't have the same columns. 
+--
+-- Missing columns will be left empty.
+outputColumns :: CSVSettings -> Handle -> [ByteString] -> MapRow -> IO ()
+outputColumns s h cs r = outputRow s h r'
+  where
+    r' = M.fromList $ map formCol cs
+    formCol x = (x, maybe "" id $ M.lookup x r)
+
+
+
 writeHeaders :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
 writeHeaders s h rs = case fileHeaders rs of
   Just hs -> B.hPutStrLn h . rowToStr s $ hs
@@ -382,6 +397,7 @@ outputRowsIter s oh rs = mapM_ (outputRowIter s oh) rs
 -- Use this datatype when developing iteratees for use with fold* family of
 -- functions (Row enumarators).
 data (CSVeable r) => ParsedRow r = ParsedRow (Maybe r) | EOF
+
 
 ------------------------------------------------------------------------------
 -- | An iteratee that processes each row of a CSV file and updates the
