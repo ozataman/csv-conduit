@@ -36,6 +36,7 @@ module Data.CSV.Enumerator
   -- * Other Utilities
   , outputRow
   , outputRows
+  , outputColumns
   , writeHeaders
   )
 
@@ -47,6 +48,7 @@ import Control.Monad (mzero, mplus, foldM, when)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
+import Data.ByteString.Char8 (ByteString)
 import Data.ByteString.Internal (c2w)
 import qualified Data.Map as M
 import System.Directory
@@ -131,9 +133,9 @@ instance CSVeable Row where
     let 
       sep = B.pack [c2w (csvOutputColSep s)] 
       wrapField !f = case (csvOutputQuoteChar s) of
-        Just !x -> let qt = c2w x
-                  in qt `B.cons` f `B.snoc` qt
+        Just !x -> x `B8.cons` escape x f `B8.snoc` x
         otherwise -> f
+      escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
   
   fileHeaders _ = Nothing
