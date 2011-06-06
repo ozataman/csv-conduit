@@ -49,6 +49,9 @@ Description:
 
 extra-source-files:
   README.markdown
+  test/csv-enumerator-test.cabal
+  test/test.csv
+  test/Test.hs
 
 Library
   hs-source-dirs: src
