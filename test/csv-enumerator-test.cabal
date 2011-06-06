@@ -1,0 +1,47 @@
+Name:                csv-enumerator-test
+Version:             0.8.2
+Synopsis:            A flexible, fast, enumerator-based CSV parser library for Haskell.  
+Homepage:            http://github.com/ozataman/csv-enumerator
+License:             BSD3
+License-file:        LICENSE
+Author:              Ozgun Ataman 
+Maintainer:          Ozgun Ataman <ozataman@gmail.com>
+Category:            Data
+Build-type:          Simple
+Cabal-version:       >=1.2
+Description:
+  For more information and examples, check out the README at:
+  <http://github.com/ozataman/csv-enumerator>.
+  
+  The API is fairly well documented and I would encourage you to keep your
+  haddocks handy.
+
+
+extra-source-files:
+  README.markdown
+
+Executable test
+  main-is: Test.hs
+  hs-source-dirs: ./ ../src
+  Other-modules:
+      Data.CSV.Enumerator.Types
+      Data.CSV.Enumerator
+  build-depends:
+      attoparsec >= 0.8 && < 0.10
+    , attoparsec-enumerator >= 0.2.0.3
+    , base >= 4 && < 5
+    , containers >= 0.3
+    , directory
+    , bytestring
+    , enumerator >= 0.4.5 && < 0.5
+    , transformers >= 0.2
+    , safe
+    , unix-compat >= 0.2.1.1
+    , test-framework
+    , test-framework-quickcheck2
+    , test-framework-hunit
+    , QuickCheck >= 2
+    , HUnit >= 1.2
+  extensions:
+    ScopedTypeVariables
+    OverloadedStrings
