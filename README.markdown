@@ -15,7 +15,7 @@ project's start in 2010, there wasn't one that provided all of the following:
 * Fast operation
 * Convenient interface that supports a variety of use cases
 
-This library is an attempt to close this gap.
+This library is an attempt to close these gaps.
 
 
 ## This package
@@ -88,6 +88,7 @@ Further examples to be provided at a later time.
 * The CSVeable typeclass can be refactored to have a more minimal definition.
 * Operating on Text in addition to ByteString would be phenomenal.
 * A test-suite needs to be added.
+* Some benchmarking would be nice.
 
 
 Any and all kinds of help is much appreciated!
