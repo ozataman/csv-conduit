@@ -17,12 +17,13 @@ module Data.CSV.Enumerator
   , defCSVSettings
 
   -- * Reading / Writing CSV Files
+  -- | These are some simple file-related operations for basic use cases.
   , readCSVFile
   , writeCSVFile
   , appendCSVFile
 
   -- * Generic Folds Over CSV Files
-  -- | These operations enable you to do whatever you want to CSV files;
+  -- | These operations enable you to do whatever you want with CSV files;
   -- including interleaved IO, etc.
   , foldCSVFile
   , CSVAction
@@ -450,6 +451,12 @@ funToIter f = iterf
 -- > f r = return [r] -- a function that just returns the given row
 --
 -- > E.run (E.enumHandle 4096 stdin $$ mapIntoHandle defCSVSettings True stdout f)
+--
+-- This nicely allows us to do things like (assuming you have pv installed):
+--
+-- > pv inputFile.csv | myApp > output.CSV
+--
+-- And monitor the ongoing progress of processing.
 mapIntoHandle 
   :: (CSVeable r)
   => CSVSettings                  -- ^ 'CSVSettings'
@@ -463,7 +470,8 @@ mapIntoHandle csvs outh h f = do
     f' acc EOF = return acc
     f' acc (ParsedRow Nothing) = return acc
     f' (False, _) r'@(ParsedRow (Just r)) = do
-      when outh $ writeHeaders csvs h [r]
+      rs <- f r
+      when outh $ writeHeaders csvs h rs
       f' (True, 0) r'
     f' (True, !i) (ParsedRow (Just r)) = do
       rs <- f r
