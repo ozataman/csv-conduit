@@ -81,11 +81,14 @@ Further examples to be provided at a later time.
 
 ### TODO - Next Steps
 
+* Refactor all operations to use iterCSV as the basic building block --
+  in progress.
+* The CSVeable typeclass can be refactored to have a more minimal definition.
+* Get mapCSVFiles out of the typeclass if possible.
 * Need to think about specializing an Exception type for the library and
   properly notifying the user when parsing-related problems occur.
 * Some operations can be further broken down to their atoms, increasing the
   flexibility of the library.
-* The CSVeable typeclass can be refactored to have a more minimal definition.
 * Operating on Text in addition to ByteString would be phenomenal.
 * A test-suite needs to be added.
 * Some benchmarking would be nice.

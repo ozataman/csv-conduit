@@ -10,7 +10,6 @@ module Data.CSV.Enumerator
   , MapRow  
 
   , CSVeable(..)
-
   , ParsedRow(..) 
 
   -- * CSV Setttings
@@ -22,11 +21,17 @@ module Data.CSV.Enumerator
   , writeCSVFile
   , appendCSVFile
 
-  -- * Folding Over CSV Files 
-  -- | These enumerators generalize the map* family of functions with a running accumulator.
+  -- * Generic Folds Over CSV Files
+  -- | These operations enable you to do whatever you want to CSV files;
+  -- including interleaved IO, etc.
+  , foldCSVFile
   , CSVAction
   , funToIter
   , funToIterIO
+
+  -- * Mapping Over CSV Files
+  , mapCSVFile
+  , mapIntoHandle
 
   -- * Primitive Iteratees
   , collectRows
@@ -44,7 +49,7 @@ where
 
 import Control.Applicative hiding (many)
 import Control.Exception (bracket, SomeException)
-import Control.Monad (mzero, mplus, foldM, when)
+import Control.Monad (mzero, mplus, foldM, when, liftM)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -81,40 +86,14 @@ class CSVeable r where
           -> a
           -> E.Iteratee B.ByteString IO a
 
+
   -- | Iteratee to push rows into a given file
-  fileSink :: CSVSettings
-           -> FilePath
-           -> (Maybe Handle, Int)
-           -> ParsedRow r
-           -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
-
-  -- | Open & fold over the CSV file.  Processing starts on row 2 for MapRow
-  -- instance to use first row as column headers.
-  foldCSVFile :: FilePath -- ^ File to open as a CSV file
-              -> CSVSettings -- ^ CSV settings to use on the input file
-              -> CSVAction r a -- ^ Fold action
-              -> a  -- ^ Initial accumulator
-              -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
-
-  -- | Take a CSV file, apply function to each of its rows and save the
-  -- resulting rows into a new file.
-  --
-  -- Each row is simply a list of fields.
-  mapCSVFile :: FilePath         -- ^ Input file
-             -> CSVSettings      -- ^ CSV Settings
-             -> (r -> [r])       -- ^ A function to map a row onto rows
-             -> FilePath         -- ^ Output file
-             -> IO (Either SomeException Int)    -- ^ Number of rows processed 
-  mapCSVFile fi s f fo = do
-    res <- foldCSVFile fi s iter (Nothing, 0)
-    return $ snd `fmap` res
-    where
-      iter !acc (ParsedRow (Just !r)) = foldM chain acc (f r) 
-      iter !acc x = fileSink s fo acc x
-
-      chain !acc !r = singleSink r acc
-
-      singleSink !x !acc = fileSink s fo acc (ParsedRow (Just x))
+  fileSink 
+    :: CSVSettings
+    -> FilePath
+    -> (Maybe Handle, Int)
+    -> ParsedRow r
+    -> E.Iteratee B.ByteString IO (Maybe Handle, Int)
 
 
   ----------------------------------------------------------------------------
@@ -151,11 +130,6 @@ instance CSVeable Row where
       procRow acc' = rowParser csvs >>= f acc' . ParsedRow
       comboIter acc' = procRow acc' >>= loop
       
-
-  foldCSVFile fp csvs f acc = E.run iter 
-    where
-      iter = enumFile fp $$ iterCSV csvs f acc
-
 
   fileSink csvs fo = iter 
     where
@@ -237,8 +211,6 @@ instance CSVeable MapRow where
 
       toMapCSV !headers !fs = yield (fs >>= (Just . M.fromList . zip headers)) (E.Chunks [])
 
-  foldCSVFile fp csvs f !acc = E.run (enumFile fp $$ iterCSV csvs f acc)
-
 
   fileSink s fo = mapIter
     where
@@ -296,6 +268,42 @@ instance CSVeable MapRow where
         in do
           outputRowsIter s oh rows 
           return (Just oh, i+1)
+
+
+------------------------------------------------------------------------------
+-- | Open & fold over the CSV file.  
+--
+-- Processing starts on row 2 for MapRow instance to use first row as column
+-- headers.
+foldCSVFile 
+  :: (CSVeable r)
+  => FilePath -- ^ File to open as a CSV file
+  -> CSVSettings -- ^ CSV settings to use on the input file
+  -> CSVAction r a -- ^ Fold action
+  -> a  -- ^ Initial accumulator
+  -> IO (Either SomeException a) -- ^ Error or the resulting accumulator
+foldCSVFile fp csvs f acc = E.run (enumFile fp $$ iterCSV csvs f acc)
+
+
+------------------------------------------------------------------------------
+-- | Take a CSV file, apply function to each of its rows and save the
+-- resulting rows into a new file.
+--
+-- Each row is simply a list of fields.
+mapCSVFile 
+  :: (CSVeable r)
+  => FilePath         -- ^ Input file
+  -> CSVSettings      -- ^ CSV Settings
+  -> (r -> [r])       -- ^ A function to map a row onto rows
+  -> FilePath         -- ^ Output file
+  -> IO (Either SomeException Int)    -- ^ Number of rows processed 
+mapCSVFile fi s f fo = do
+  res <- foldCSVFile fi s iter (Nothing, 0)
+  return $ snd `fmap` res
+  where
+    iter !acc (ParsedRow (Just !r)) = foldM chain acc (f r) 
+    iter !acc x = fileSink s fo acc x
+    chain !acc !r = fileSink s fo acc (ParsedRow (Just r))
 
 
 ------------------------------------------------------------------------------
@@ -429,6 +437,38 @@ funToIter f = iterf
   where
     iterf !acc EOF = yield (f acc EOF) E.EOF
     iterf !acc r = yield (f acc r) (E.Chunks [])
+
+
+
+------------------------------------------------------------------------------
+-- | Create an iteratee that can map over a CSV stream and output results to
+-- a handle in an interleaved fashion. 
+--
+-- Example use: Let's map over a CSV file coming in through 'stdin' and push
+-- results to 'stdout'.
+--
+-- > f r = return [r] -- a function that just returns the given row
+--
+-- > E.run (E.enumHandle 4096 stdin $$ mapIntoHandle defCSVSettings True stdout f)
+mapIntoHandle 
+  :: (CSVeable r)
+  => CSVSettings                  -- ^ 'CSVSettings'
+  -> Bool                         -- ^ Whether to write headers
+  -> Handle                       -- ^ Handle to stream results
+  -> (r -> IO [r])                -- ^ Map function
+  -> E.Iteratee ByteString IO Int -- ^ Resulting Iteratee
+mapIntoHandle csvs outh h f = do
+  snd `liftM` iterCSV csvs (funToIterIO f') (False,0)
+  where
+    f' acc EOF = return acc
+    f' acc (ParsedRow Nothing) = return acc
+    f' (False, _) r'@(ParsedRow (Just r)) = do
+      when outh $ writeHeaders csvs h [r]
+      f' (True, 0) r'
+    f' (True, !i) (ParsedRow (Just r)) = do
+      rs <- f r
+      outputRows csvs h rs
+      return (True, i+1)
 
 
 ------------------------------------------------------------------------------
