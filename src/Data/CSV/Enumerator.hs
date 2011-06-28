@@ -63,7 +63,6 @@ import System.PosixCompat.Files (getFileStatus, fileSize)
 
 import Data.Attoparsec as P hiding (take)
 import qualified Data.Attoparsec.Char8 as C8
--- import Data.Attoparsec.Enum
 import Data.Attoparsec.Enumerator
 import qualified Data.Enumerator as E
 import Data.Enumerator (($$), yield, continue)
