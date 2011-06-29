@@ -487,9 +487,13 @@ collectRows acc (ParsedRow (Just r)) = let a' = (r:acc)
                                        in a' `seq` yield a' (E.Chunks [])
 collectRows acc (ParsedRow Nothing) = yield acc (E.Chunks [])
 
--- * Parsers
 
-rowParser :: (Monad m, MonadIO m) => CSVSettings -> E.Iteratee B.ByteString m (Maybe Row)
+------------------------------------------------------------------------------
+-- Parsers
+
+rowParser 
+  :: (Monad m, MonadIO m) 
+  => CSVSettings -> E.Iteratee B.ByteString m (Maybe Row)
 rowParser csvs = E.catchError p handler 
   where 
     p = iterParser $ row csvs
@@ -497,6 +501,7 @@ rowParser csvs = E.catchError p handler
       liftIO $ putStrLn ("Error in parsing: " ++ show e)
       yield Nothing (E.Chunks [])
       
+
 row :: CSVSettings -> Parser (Maybe Row)
 row csvs = csvrow csvs <|> badrow
 
@@ -506,8 +511,8 @@ badrow = P.takeWhile (not . C8.isEndOfLine) *>
 
 csvrow :: CSVSettings -> Parser (Maybe Row)
 csvrow c = 
-  let !rowbody = (quotedField' <|> (field c)) `sepBy` C8.char (csvSep c)
-      !properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
+  let rowbody = (quotedField' <|> (field c)) `sepBy` C8.char (csvSep c)
+      properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
       quotedField' = case csvQuoteChar c of
           Nothing -> mzero
           Just q' -> try (quotedField q')
@@ -516,7 +521,7 @@ csvrow c =
     return $ Just res
 
 field :: CSVSettings -> Parser Field
-field s = P.takeWhile (isFieldChar s) <?> "Parsing a regular field"
+field s = P.takeWhile (isFieldChar s) 
 
 isFieldChar s = notInClass xs'
   where xs = csvSep s : "\n\r"
@@ -525,10 +530,13 @@ isFieldChar s = notInClass xs'
           Just x -> x : xs
 
 quotedField :: Char -> Parser Field
-quotedField c = let w = c2w c in do
-  (C8.char c) <?> "Quote start"
-  f <- many (notWord8 w <|> (string (B.pack $ [w,w]) *> return w))
-  (C8.char c) <?> "Quote end"
-  return $ B.pack f
+quotedField c = 
+  let quoted = string dbl *> return c
+      dbl = B8.pack [c,c]
+  in do
+  C8.char c 
+  f <- many (C8.notChar c <|> quoted)
+  C8.char c 
+  return $ B8.pack f
 
 
