@@ -13,16 +13,16 @@ import qualified Data.Map as M
 data CSVSettings = CSVS
   { 
     -- | Separator character to be used in between fields
-    csvSep :: Char          
+    csvSep :: !Char          
 
     -- | Quote character that may sometimes be present around fields. If 'Nothing' is given, the library will never expect quotation even if it is present.
-  , csvQuoteChar :: Maybe Char
+  , csvQuoteChar :: !(Maybe Char)
   
     -- | Quote character that should be used in the output.
-  , csvOutputQuoteChar :: Maybe Char
+  , csvOutputQuoteChar :: !(Maybe Char)
   
     -- | Field separator that should be used in the output.
-  , csvOutputColSep :: Char
+  , csvOutputColSep :: !Char
   } deriving (Read, Show, Eq)
 
 -- | Default settings for a CSV file. 
