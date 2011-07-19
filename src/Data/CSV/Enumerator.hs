@@ -32,6 +32,7 @@ module Data.CSV.Enumerator
 
   -- * Mapping Over CSV Files
   , mapCSVFile
+  , mapAccumCSVFile
   , mapIntoHandle
 
   -- * Primitive Iteratees
@@ -304,6 +305,30 @@ mapCSVFile fi s f fo = do
     iter !acc (ParsedRow (Just !r)) = foldM chain acc (f r) 
     iter !acc x = fileSink s fo acc x
     chain !acc !r = fileSink s fo acc (ParsedRow (Just r))
+
+
+------------------------------------------------------------------------------
+-- | Map-accumulate over a CSV file. Similar to 'mapAccumL' in 'Data.List'.
+mapAccumCSVFile
+  :: (CSVeable r)
+  => FilePath
+  -> CSVSettings
+  -> (acc -> r -> (acc, [r]))
+  -> acc
+  -> FilePath
+  -> IO (Either SomeException acc)
+mapAccumCSVFile fi s f acc fo = do
+  res <- foldCSVFile fi s iter (acc, (Nothing, 0))
+  return $ fst `fmap` res
+  where
+    iter (a, outa) (ParsedRow (Just !r)) = foldM chain (a', outa) rs
+      where (a', rs) = f a r
+    iter (a, outa) x = do
+      outa' <- fileSink s fo outa x
+      return $ (a, outa')
+    chain (a, outa) !r = do
+      outa' <- fileSink s fo outa (ParsedRow (Just r))
+      return $ (a, outa')
 
 
 ------------------------------------------------------------------------------
