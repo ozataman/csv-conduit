@@ -362,19 +362,19 @@ appendCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
              -> [r]   -- ^ Data to be output
              -> IO Int  -- ^ Number of rows written
 appendCSVFile s fp rs = 
-  let doOutput (c,h) = when c (writeHeaders s h rs) >> outputRowsIter h
+  let doOutput (c,h) = when c (writeHeaders s h rs >> return ()) >> outputRowsIter h
       outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
       step h acc x = (B.hPutStrLn h x) >> return (acc+1)
       chkOpen = do
-        writeHeaders <- do
+        wrHeader <- do
           fe <- doesFileExist fp 
           if fe
-          	then do
-          	  fs <- getFileStatus fp >>= return . fileSize
-          	  return $ if fs > 0 then False else True
+            then do
+              fs <- getFileStatus fp >>= return . fileSize
+              return $ if fs > 0 then False else True
             else return True
         h <- openFile fp AppendMode
-        return (writeHeaders, h)
+        return (wrHeader, h)
   in bracket
       (chkOpen)
       (hClose . snd)
@@ -405,10 +405,10 @@ outputColumns s h cs r = outputRow s h r'
 
 
 
-writeHeaders :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
+writeHeaders :: CSVeable r => CSVSettings -> Handle -> [r] -> IO Bool
 writeHeaders s h rs = case fileHeaders rs of
-  Just hs -> B.hPutStrLn h . rowToStr s $ hs
-  Nothing -> return ()
+  Just hs -> (B.hPutStrLn h . rowToStr s) hs >> return True
+  Nothing -> return False
 
 
 outputRowIter :: CSVeable r => CSVSettings -> Handle -> r -> E.Iteratee B.ByteString IO ()
@@ -493,10 +493,12 @@ mapIntoHandle csvs outh h f = do
   where
     f' acc EOF = return acc
     f' acc (ParsedRow Nothing) = return acc
-    f' (False, _) r'@(ParsedRow (Just r)) = do
+    f' (False, i) r'@(ParsedRow (Just r)) = do
       rs <- f r
-      when outh $ writeHeaders csvs h rs
-      f' (True, 0) r'
+      headerDone <- if outh then writeHeaders csvs h rs else return True
+      if headerDone 
+      	then f' (headerDone, 0) r'  -- Headers are done, now process row
+        else return (False, i+1)    -- Problem in this row, move on to next
     f' (True, !i) (ParsedRow (Just r)) = do
       rs <- f r
       outputRows csvs h rs
