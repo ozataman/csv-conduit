@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, BangPatterns #-}
 {-# LANGUAGE PackageImports #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Data.CSV.Enumerator 
   ( 
