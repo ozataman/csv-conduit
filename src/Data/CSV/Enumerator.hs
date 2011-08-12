@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, BangPatterns #-}
 {-# LANGUAGE PackageImports #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Data.CSV.Enumerator 
   ( 
@@ -225,7 +225,7 @@ instance CSVeable MapRow where
       mapIter (Nothing, !i) (ParsedRow (Just (!r))) = do
         oh <- liftIO $ do
           oh' <- openFile fo WriteMode
-          B.hPutStrLn oh' . rowToStr s . M.keys $ r
+          B8.hPutStrLn oh' . rowToStr s . M.keys $ r
           return oh'
         mapIter (Just oh, i) (ParsedRow (Just r))
       mapIter (Just oh, !i) (ParsedRow (Just (!r))) = do
@@ -261,7 +261,7 @@ instance CSVeable MapRow where
               oh' <- openFile fo AppendMode
               case exist of
                 True -> return ()
-                False -> B.hPutStrLn oh' . rowToStr s . M.keys . (addFileSource fi) $ x
+                False -> B8.hPutStrLn oh' . rowToStr s . M.keys . (addFileSource fi) $ x
               return oh'
             iter fi (Just oh, i) (ParsedRow (Just r))
       iter fi (Just oh, !i) (ParsedRow (Just r)) = 
@@ -350,7 +350,7 @@ writeCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
 writeCSVFile s fp rs = 
   let doOutput h = writeHeaders s h rs >> outputRowsIter h
       outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
-      step h acc x = (B.hPutStrLn h x) >> return (acc+1)
+      step h acc x = (B8.hPutStrLn h x) >> return (acc+1)
   in bracket
       (openFile fp WriteMode)
       (hClose)
@@ -364,7 +364,7 @@ appendCSVFile :: (CSVeable r) => CSVSettings   -- ^ CSV settings
 appendCSVFile s fp rs = 
   let doOutput (c,h) = when c (writeHeaders s h rs >> return ()) >> outputRowsIter h
       outputRowsIter h = foldM (step h) 0  . map (rowToStr s) $ rs
-      step h acc x = (B.hPutStrLn h x) >> return (acc+1)
+      step h acc x = (B8.hPutStrLn h x) >> return (acc+1)
       chkOpen = do
         wrHeader <- do
           fe <- doesFileExist fp 
@@ -383,7 +383,7 @@ appendCSVFile s fp rs =
 ------------------------------------------------------------------------------
 -- | Output given row into given handle
 outputRow :: CSVeable r => CSVSettings -> Handle -> r -> IO ()
-outputRow s oh = B.hPutStrLn oh . rowToStr s
+outputRow s oh = B8.hPutStrLn oh . rowToStr s
 
 
 outputRows :: CSVeable r => CSVSettings -> Handle -> [r] -> IO ()
@@ -407,7 +407,7 @@ outputColumns s h cs r = outputRow s h r'
 
 writeHeaders :: CSVeable r => CSVSettings -> Handle -> [r] -> IO Bool
 writeHeaders s h rs = case fileHeaders rs of
-  Just hs -> (B.hPutStrLn h . rowToStr s) hs >> return True
+  Just hs -> (B8.hPutStrLn h . rowToStr s) hs >> return True
   Nothing -> return False
 
 
