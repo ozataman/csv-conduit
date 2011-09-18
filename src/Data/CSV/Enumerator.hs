@@ -72,6 +72,8 @@ import Data.Word (Word8)
 import Safe (headMay)
 
 import Data.CSV.Enumerator.Types
+import Data.CSV.Enumerator.Parser
+
 
 class CSVeable r where
 
@@ -528,42 +530,4 @@ rowParser csvs = E.catchError p handler
       liftIO $ putStrLn ("Error in parsing: " ++ show e)
       yield Nothing (E.Chunks [])
       
-
-row :: CSVSettings -> Parser (Maybe Row)
-row csvs = csvrow csvs <|> badrow
-
-badrow :: Parser (Maybe Row)
-badrow = P.takeWhile (not . C8.isEndOfLine) *> 
-         (C8.endOfLine <|> C8.endOfInput) *> return Nothing
-
-csvrow :: CSVSettings -> Parser (Maybe Row)
-csvrow c = 
-  let rowbody = (quotedField' <|> (field c)) `sepBy` C8.char (csvSep c)
-      properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
-      quotedField' = case csvQuoteChar c of
-          Nothing -> mzero
-          Just q' -> try (quotedField q')
-  in do
-    res <- properrow
-    return $ Just res
-
-field :: CSVSettings -> Parser Field
-field s = P.takeWhile (isFieldChar s) 
-
-isFieldChar s = notInClass xs'
-  where xs = csvSep s : "\n\r"
-        xs' = case csvQuoteChar s of 
-          Nothing -> xs
-          Just x -> x : xs
-
-quotedField :: Char -> Parser Field
-quotedField c = 
-  let quoted = string dbl *> return c
-      dbl = B8.pack [c,c]
-  in do
-  C8.char c 
-  f <- many (C8.notChar c <|> quoted)
-  C8.char c 
-  return $ B8.pack f
-
 
