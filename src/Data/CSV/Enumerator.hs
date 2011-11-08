@@ -267,7 +267,7 @@ instance CSVeable MapRow where
               return oh'
             iter fi (Just oh, i) (ParsedRow (Just r))
       iter fi (Just oh, !i) (ParsedRow (Just r)) = 
-        let rows = f . addFileSource fi $ r
+        let rows = map (addFileSource fi) $ f r
         in do
           outputRowsIter s oh rows 
           return (Just oh, i+1)
