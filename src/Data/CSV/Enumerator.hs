@@ -22,6 +22,10 @@ module Data.CSV.Enumerator
   , writeCSVFile
   , appendCSVFile
 
+  -- * Very Basic CSV Operations (for Debugging or Quick&Dirty Needs)
+  , parseCSV
+  , parseRow
+  
   -- * Generic Folds Over CSV Files
   -- | These operations enable you to do whatever you want with CSV files;
   -- including interleaved IO, etc.
