@@ -12,7 +12,7 @@ module Data.CSV.Enumerator.Parser
 where
 
 
-import Control.Applicative hiding (many)
+import Control.Applicative
 import Control.Monad (mzero, mplus, foldM, when, liftM)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Data.ByteString as B
