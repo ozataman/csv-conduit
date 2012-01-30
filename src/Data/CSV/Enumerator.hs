@@ -435,7 +435,7 @@ outputRowsIter s oh rs = mapM_ (outputRowIter s oh) rs
 --
 -- Use this datatype when developing iteratees for use with fold* family of
 -- functions (Row enumarators).
-data (CSVeable r) => ParsedRow r = ParsedRow (Maybe r) | EOF
+data ParsedRow r = ParsedRow (Maybe r) | EOF
 
 
 ------------------------------------------------------------------------------
