@@ -1,5 +1,5 @@
 Name:                csv-enumerator
-Version:             0.10.1.0
+Version:             0.10.1.1
 Synopsis:            A flexible, fast, enumerator-based CSV parser library for Haskell.  
 Homepage:            http://github.com/ozataman/csv-enumerator
 License:             BSD3

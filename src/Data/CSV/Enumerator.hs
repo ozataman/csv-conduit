@@ -36,6 +36,8 @@ module Data.CSV.Enumerator
 
   -- * Mapping Over CSV Files
   , mapCSVFile
+  , mapCSVFileM
+  , mapCSVFileM_
   , mapAccumCSVFile
   , mapIntoHandle
 
@@ -311,6 +313,42 @@ mapCSVFile fi s f fo = do
     iter !acc (ParsedRow (Just !r)) = foldM chain acc (f r) 
     iter !acc x = fileSink s fo acc x
     chain !acc !r = fileSink s fo acc (ParsedRow (Just r))
+
+
+------------------------------------------------------------------------------
+-- | Take a CSV file, apply an IO action to each of its rows and save the
+-- resulting rows into a new file.
+--
+-- Each row is simply a list of fields.
+mapCSVFileM
+  :: (CSVeable r)
+  => FilePath         -- ^ Input file
+  -> CSVSettings      -- ^ CSV Settings
+  -> (r -> IO [r])       -- ^ A function to map a row onto rows
+  -> FilePath         -- ^ Output file
+  -> IO (Either SomeException Int)    -- ^ Number of rows processed 
+mapCSVFileM fi s f fo = do
+  res <- foldCSVFile fi s iter (Nothing, 0)
+  return $ snd `fmap` res
+  where
+    iter !acc (ParsedRow (Just !r)) = foldM chain acc =<< liftIO (f r)
+    iter !acc x = fileSink s fo acc x
+    chain !acc !r = fileSink s fo acc (ParsedRow (Just r))
+
+
+
+------------------------------------------------------------------------------
+-- | Take a CSV file, apply an IO action to each of its rows and discard the results.
+--
+mapCSVFileM_
+  :: (CSVeable r)
+  => FilePath         -- ^ Input file
+  -> CSVSettings      -- ^ CSV Settings
+  -> (r -> IO a)       -- ^ A function to process rows
+  -> IO (Either SomeException Int)    -- ^ Number of rows processed 
+mapCSVFileM_ fi s f = foldCSVFile fi s iter 0
+  where
+    iter !acc (ParsedRow (Just !r)) = liftIO (f r) >> return (acc+1)
 
 
 ------------------------------------------------------------------------------
