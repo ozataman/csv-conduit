@@ -69,6 +69,7 @@ Library
     , containers >= 0.3
     , directory
     , bytestring
+    , text
     , transformers >= 0.2
     , safe
     , unix-compat >= 0.2.1.1
