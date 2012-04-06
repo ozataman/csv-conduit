@@ -33,7 +33,18 @@ Description:
   * Fast operation
   .
 
-  This library is an attempt to close these gaps.
+  This library is an attempt to close these gaps. Please note that
+  this library started its life based on the enumerator package and
+  has recently been ported to work with conduits instead. In the
+  process, it has been greatly simplified thanks to the modular nature
+  of the conduits library.
+
+  . 
+  
+  Following the port to conduits, the library has also gained the
+  ability to parameterize on the stream type and work both with
+  ByteString and Text.
+
   .
 
   For more documentation and examples, check out the README at:
@@ -42,10 +53,6 @@ Description:
   <http://github.com/ozataman/csv-conduit>
   .
   
-  The API is fairly well documented and I would encourage you to keep your
-  haddocks handy. If you run into problems, just email me or holler over at
-  #haskell. 
-
 
 extra-source-files:
   README.markdown

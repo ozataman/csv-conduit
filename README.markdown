@@ -20,29 +20,23 @@ This library is an attempt to close these gaps.
 
 ## This package
 
-csv-enumerator is an enumerator-based CSV parsing library that is easy to use,
-flexible and fast. Furthermore, it provides ways to use constant-space during
-operation, which is absolutely critical in many real world use cases.
+csv-conduit is a conduits based CSV parsing library that is easy to
+use, flexible and fast. Furthermore, it provides ways to use
+constant-space during operation, which is absolutely critical in many
+real world use cases.
 
 
 ### Introduction
 
-* ByteStrings are used for everything
+* The CSVeable typeclass implements the key operations.
+* CSVeable is parameterized on both a stream type and a target CSV row type.
 * There are 2 basic row types and they implement *exactly* the same operations,
   so you can chose the right one for the job at hand:
-  - type MapRow = Map ByteString ByteString
-  - type Row = [ByteString]
-* Folding over a CSV file can be thought of as the most basic operation.
-* Higher level convenience functions are provided to "map" over CSV files,
-  modifying and transforming them along the way.
-* Helpers are provided for simple input/output of CSV files for simple use
-  cases.
-* For extreme / advanced use cases, the user can drop down to the
-  Enumerator/Iteratee level and do interleaved IO among other things.
-
-### API Docs
-
-The API is quite well documented and I would encourage you to keep it handy.
+  - type MapRow t = Map t t
+  - type Row t = [t]
+* You basically use the Conduits defined in this library to do the
+  parsing from a CSV stream and rendering back into a CSV stream.
+* Use the full flexibility and modularity of conduits for sources and sinks.
 
 ### Speed
 
@@ -57,42 +51,25 @@ regressions or optimization opportunities.
 
     {-# LANGUAGE OverloadedStrings #-}
 
-    import Data.CSV.Enumerator
-    import Data.Char (isSpace)
-    import qualified Data.Map as M
-    import Data.Map ((!))
+    import Data.Conduit.Text
+    import Data.Conduit.Binary
+    import Data.Conduit
+    import Data.CSV.Conduit
+    
+    -- Let's simply stream from a file, parse the CSV, reserialize it
+    -- and push back into another file.
+    test :: IO ()
+    test = runResourceT $ 
+      sourceFile "test/BigFile.csv" $= 
+      decode utf8 $=
+      (intoCSV defCSVSettings 
+        :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $= 
+      fromCSV defCSVSettings $=
+      encode utf8 $$
+      sinkFile "test/BigFileOut.csv"
 
-    -- Naive whitespace stripper
-    strip = reverse . B.dropWhile isSpace . reverse . B.dropWhile isSpace
-
-    -- A function that takes a row and "emits" zero or more rows as output.
-    processRow :: MapRow -> [MapRow]
-    processRow row = [M.insert "Column1" fixedCol row]
-      where fixedCol = strip (row ! "Column1")
-
-    main = mapCSVFile "InputFile.csv" defCSVSettings procesRow "OutputFile.csv"
 
 and we are done. 
 
 
-Further examples to be provided at a later time.
-
-
-
-### TODO - Next Steps
-
-* Refactor all operations to use iterCSV as the basic building block --
-  in progress.
-* The CSVeable typeclass can be refactored to have a more minimal definition.
-* Get mapCSVFiles out of the typeclass if possible.
-* Need to think about specializing an Exception type for the library and
-  properly notifying the user when parsing-related problems occur.
-* Some operations can be further broken down to their atoms, increasing the
-  flexibility of the library.
-* Operating on Text in addition to ByteString would be phenomenal.
-* A test-suite needs to be added.
-* Some benchmarking would be nice.
-
-
-Any and all kinds of help is much appreciated!
 
