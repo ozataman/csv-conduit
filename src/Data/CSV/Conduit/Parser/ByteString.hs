@@ -5,44 +5,44 @@
 
 -}
 
-module Data.CSV.Conduit.Parser 
+module Data.CSV.Conduit.Parser.ByteString
+    ( parseCSV
+    , parseRow
+    , row
+    , csv
+    ) where
 
-( parseCSV, parseRow, row, csv ) 
-
-where
-
-
-import Control.Applicative
-import Control.Monad (mzero, mplus, foldM, when, liftM)
-import Control.Monad.IO.Class (liftIO, MonadIO)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import Data.ByteString.Char8 (ByteString)
-import Data.ByteString.Internal (c2w)
-import qualified Data.Map as M
-
-import Data.Attoparsec as P hiding (take)
+-------------------------------------------------------------------------------
+import           Control.Applicative
+import           Control.Monad (mzero, mplus, foldM, when, liftM)
+import           Control.Monad.IO.Class (liftIO, MonadIO)
+import           Data.Attoparsec as P hiding (take)
 import qualified Data.Attoparsec.Char8 as C8
-import Data.Word (Word8)
-
-import Data.CSV.Conduit.Types
+import qualified Data.ByteString as B
+import           Data.ByteString.Char8 (ByteString)
+import qualified Data.ByteString.Char8 as B8
+import           Data.ByteString.Internal (c2w)
+import qualified Data.Map as M
+import           Data.Word (Word8)
+-------------------------------------------------------------------------------
+import           Data.CSV.Conduit.Types
 
 
 ------------------------------------------------------------------------------
 -- | Try to parse given string as CSV
-parseCSV :: CSVSettings -> ByteString -> Either String [Row]
+parseCSV :: CSVSettings -> ByteString -> Either String [Row ByteString]
 parseCSV s = parseOnly $ csv s
 
 
 ------------------------------------------------------------------------------
--- | Try to parse given string as 'Row'
-parseRow :: CSVSettings -> ByteString -> Either String (Maybe Row)
+-- | Try to parse given string as 'Row ByteString'
+parseRow :: CSVSettings -> ByteString -> Either String (Maybe (Row ByteString))
 parseRow s = parseOnly $ row s
 
 
 ------------------------------------------------------------------------------
 -- | Parse CSV
-csv :: CSVSettings -> Parser [Row]
+csv :: CSVSettings -> Parser [Row ByteString]
 csv s = do
   r <- row s
   end <- atEnd
@@ -59,15 +59,15 @@ csv s = do
 
 ------------------------------------------------------------------------------
 -- | Parse a CSV row
-row :: CSVSettings -> Parser (Maybe Row)
+row :: CSVSettings -> Parser (Maybe (Row ByteString))
 row csvs = csvrow csvs <|> badrow
 
 
-badrow :: Parser (Maybe Row)
+badrow :: Parser (Maybe (Row ByteString))
 badrow = P.takeWhile (not . C8.isEndOfLine) *> 
          (C8.endOfLine <|> C8.endOfInput) *> return Nothing
 
-csvrow :: CSVSettings -> Parser (Maybe Row)
+csvrow :: CSVSettings -> Parser (Maybe (Row ByteString))
 csvrow c = 
   let rowbody = (quotedField' <|> (field c)) `sepBy` C8.char (csvSep c)
       properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
@@ -78,7 +78,7 @@ csvrow c =
     res <- properrow
     return $ Just res
 
-field :: CSVSettings -> Parser Field
+field :: CSVSettings -> Parser ByteString
 field s = P.takeWhile (isFieldChar s) 
 
 isFieldChar s = notInClass xs'
@@ -87,7 +87,7 @@ isFieldChar s = notInClass xs'
           Nothing -> xs
           Just x -> x : xs
 
-quotedField :: Char -> Parser Field
+quotedField :: Char -> Parser ByteString
 quotedField c = 
   let quoted = string dbl *> return c
       dbl = B8.pack [c,c]

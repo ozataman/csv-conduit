@@ -1,7 +1,7 @@
-Name:                csv-enumerator
-Version:             0.10.1.1
-Synopsis:            A flexible, fast, enumerator-based CSV parser library for Haskell.  
-Homepage:            http://github.com/ozataman/csv-enumerator
+Name:                csv-conduit
+Version:             0.1
+Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.  
+Homepage:            http://github.com/ozataman/csv-conduit
 License:             BSD3
 License-file:        LICENSE
 Author:              Ozgun Ataman 
@@ -39,7 +39,7 @@ Description:
   For more documentation and examples, check out the README at:
   .
 
-  <http://github.com/ozataman/csv-enumerator>
+  <http://github.com/ozataman/csv-conduit>
   .
   
   The API is fairly well documented and I would encourage you to keep your
@@ -56,18 +56,19 @@ extra-source-files:
 Library
   hs-source-dirs: src
   Exposed-modules:     
-      Data.CSV.Enumerator
-      Data.CSV.Enumerator.Parser
+      Data.CSV.Conduit
+      Data.CSV.Conduit.Parser.ByteString
+      Data.CSV.Conduit.Parser.Text
   Other-modules:
-      Data.CSV.Enumerator.Types
+      Data.CSV.Conduit.Types
   build-depends:
       attoparsec >= 0.10
-    , attoparsec-enumerator >= 0.2
+    , attoparsec-conduit
+    , conduit == 0.4.*
     , base >= 4 && < 5
     , containers >= 0.3
     , directory
     , bytestring
-    , enumerator >= 0.4.5
     , transformers >= 0.2
     , safe
     , unix-compat >= 0.2.1.1
