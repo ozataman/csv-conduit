@@ -7,6 +7,8 @@
 
 module Data.CSV.Conduit
     ( CSVeable (..)
+    , CSVSettings (..)
+    , defCSVSettings
     , MapRow
     , Row
     ) where
@@ -44,6 +46,20 @@ import           Data.CSV.Conduit.Types
 -------------------------------------------------------------------------------
 -- | Represents types 'r' that can be converted from an underlying
 -- stream of type 's'.
+--
+-- Example processing using MapRow Text isntance:
+--
+-- @
+-- test :: IO ()
+-- test = runResourceT $ 
+--   sourceFile "test/BigFile.csv" $= 
+--   decode utf8 $=
+--   intoCSV defCSVSettings $=
+--   myMapRowProcessingConduit $=
+--   fromCSV defCSVSettings $=
+--   encode utf8 $$
+--   sinkFile "test/BigFileOut.csv"
+-- @
 class CSVeable s r where
 
   -----------------------------------------------------------------------------

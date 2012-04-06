@@ -2,14 +2,13 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
-
 module Data.CSV.Conduit.Types where
 
-
+-------------------------------------------------------------------------------
 import qualified Data.ByteString as B
 import Data.Text (Text)
 import qualified Data.Map as M
-
+-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
 -- | Settings for a CSV file. This library is intended to be flexible
@@ -52,7 +51,9 @@ defCSVSettings = CSVS
 
 
 -------------------------------------------------------------------------------
+-- | A 'Row' is just a list of fields
 type Row a = [a]
 
 -------------------------------------------------------------------------------
+-- | A 'MapRow' is a dictionary based on 'Data.Map'
 type MapRow a = M.Map a a
