@@ -25,6 +25,7 @@ import           Data.ByteString.Internal   (c2w)
 import           Data.Conduit as C
 import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary
+import           Data.Conduit.Text
 import qualified Data.Map                   as M
 import           Data.String
 import           Data.Text (Text)
@@ -32,7 +33,6 @@ import qualified Data.Text as T
 import           Data.Word                  (Word8)
 import           Safe                       (headMay)
 import           System.Directory
-import           System.IO
 import           System.PosixCompat.Files   (getFileStatus, fileSize)
 -------------------------------------------------------------------------------
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
@@ -166,7 +166,9 @@ fromCSVMap set = conduitState False push close
 test :: IO ()
 test = runResourceT $ 
   sourceFile "test/BigFile.csv" $= 
+  decode utf8 $=
   (intoCSV defCSVSettings 
-    :: forall m. MonadResource m => Conduit ByteString m (MapRow ByteString)) $= 
-  fromCSV defCSVSettings $$ 
+    :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $= 
+  fromCSV defCSVSettings $=
+  encode utf8 $$
   sinkFile "test/BigFileOut.csv"
