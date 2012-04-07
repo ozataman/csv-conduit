@@ -11,6 +11,9 @@ module Data.CSV.Conduit
     , defCSVSettings
     , MapRow
     , Row
+    -- * Convenience Functions
+    , readCSVFile
+    , mapCSVFile
     ) where
 
 -------------------------------------------------------------------------------
@@ -18,6 +21,7 @@ import           Control.Applicative        hiding (many)
 import           Control.Exception          (bracket, SomeException)
 import           Control.Monad              (mzero, mplus, foldM, when, liftM)
 import           Control.Monad.IO.Class     (liftIO, MonadIO)
+import           Control.Monad.Trans.Control
 import           Data.Attoparsec            as P hiding (take)
 import qualified Data.Attoparsec.Char8      as C8
 import qualified Data.ByteString            as B
@@ -26,12 +30,14 @@ import qualified Data.ByteString.Char8      as B8
 import           Data.ByteString.Internal   (c2w)
 import           Data.Conduit as C
 import           Data.Conduit.Attoparsec
-import           Data.Conduit.Binary
+import           Data.Conduit.Binary (sourceFile, sinkFile)
+import qualified Data.Conduit.List as C
 import           Data.Conduit.Text
 import qualified Data.Map                   as M
 import           Data.String
 import           Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import           Data.Word                  (Word8)
 import           Safe                       (headMay)
 import           System.Directory
@@ -66,11 +72,6 @@ class CSVeable s r where
   -- | Convert a CSV row into strict ByteString equivalent.
   rowToStr :: CSVSettings -> r -> s
 
-  -----------------------------------------------------------------------------
-  -- | Possibly return headers.
-  fileHeaders :: r -> Maybe (Row s)
-  fileHeaders = const Nothing
-  
   -----------------------------------------------------------------------------
   -- | Turn a stream of 's' into a stream of CSV row type
   intoCSV :: MonadResource m => CSVSettings -> Conduit s m r
@@ -113,6 +114,15 @@ instance CSVeable Text (Row Text) where
 
 
 -------------------------------------------------------------------------------
+-- | 'Row' instance using 'Text' based on 'ByteString' stream
+instance CSVeable ByteString (Row Text) where
+    rowToStr s r = T.encodeUtf8 $ rowToStr s r
+    intoCSV set = intoCSV set =$= C.map (map T.decodeUtf8)
+    fromCSV set = fromCSV set =$= C.map T.encodeUtf8
+
+
+
+-------------------------------------------------------------------------------
 fromCSVRow set = conduitState init push close
   where
     init = ()
@@ -141,9 +151,8 @@ intoCSVRow p = parser =$= puller
 -------------------------------------------------------------------------------
 -- | Generic 'MapRow' instance; any stream type with a 'Row' instance
 -- automatically gets a 'MapRow' instance.
-instance (CSVeable s (Row s), Ord s, IsString s) => CSVeable s (MapRow s) where
+instance (CSVeable s (Row s'), Ord s', IsString s) => CSVeable s (MapRow s') where
   rowToStr s r = rowToStr s . M.elems $ r
-  fileHeaders r = Just $ M.keys r
   intoCSV set = intoCSVMap set
   fromCSV set = fromCSVMap set
 
@@ -172,6 +181,38 @@ fromCSVMap set = conduitState False push close
     close _ = return []
 
 
+
+                          ---------------------------
+                          -- Convenience Functions --
+                          ---------------------------
+
+
+-------------------------------------------------------------------------------
+-- | Read the entire contents of a CSV file into memory
+readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
+
+
+-------------------------------------------------------------------------------
+-- | Map over the rows of a CSV file. Don't be scared by the type
+-- signature, this can just run in IO.
+mapCSVFile 
+    :: (MonadIO m, MonadUnsafeIO m, MonadThrow m, 
+        MonadBaseControl IO m, CSVeable ByteString a, CSVeable ByteString b) 
+    => CSVSettings 
+    -- ^ Settings to use both for input and output
+    -> (a -> b) 
+    -- ^ A mapping function
+    -> FilePath 
+    -- ^ Input file
+    -> FilePath 
+    -- ^ Output file
+    -> m ()
+mapCSVFile set f fi fo = runResourceT $
+    sourceFile fi $=
+    intoCSV set $=
+    C.map f $=
+    fromCSV set $$
+    sinkFile fo
 
 
                                -----------------

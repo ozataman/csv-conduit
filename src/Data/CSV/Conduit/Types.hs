@@ -10,6 +10,7 @@ import Data.Text (Text)
 import qualified Data.Map as M
 -------------------------------------------------------------------------------
 
+
 -------------------------------------------------------------------------------
 -- | Settings for a CSV file. This library is intended to be flexible
 -- and offer a way to process the majority of text data files out

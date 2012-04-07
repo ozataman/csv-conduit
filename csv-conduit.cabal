@@ -80,6 +80,7 @@ Library
     , transformers >= 0.2
     , safe
     , unix-compat >= 0.2.1.1
+    , monad-control
   extensions:
     ScopedTypeVariables
   ghc-options: -funbox-strict-fields
