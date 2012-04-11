@@ -54,20 +54,44 @@ import           Data.CSV.Conduit.Types
 
 
 -------------------------------------------------------------------------------
--- | Represents types 'r' that can be converted from an underlying
--- stream of type 's'.
+-- | Represents types 'r' that are CSV-like and can be converted
+-- to/from an underlying stream of type 's'.
 --
--- Example processing using MapRow Text isntance:
---
+-- 
+-- Example #1: Basics Using Convenience API
+-- 
 -- @
--- test :: IO ()
+-- import Data.Conduit
+-- import Data.Conduit.Binary
+-- import Data.Conduit.List as CL
+-- import Data.CSV.Conduit
+--
+-- myProcessor :: Conduit (Row Text) m (Row Text)
+-- myProcessor = CL.map reverse
+-- 
+-- test = runResourceT $ 
+--   transformCSV defCSVSettings 
+--                (sourceFile "input.csv") 
+--                myProcessor
+--                (sinkFile "output.csv")
+-- @
+--
+--
+-- Example #2: Basics Using Conduit API
+-- 
+-- @
+-- import Data.Conduit
+-- import Data.Conduit.Binary
+-- import Data.CSV.Conduit
+--
+-- myProcessor :: Conduit (Row Text) m (Row Text)
+-- myProcessor = undefined
+--
 -- test = runResourceT $ 
 --   sourceFile "test/BigFile.csv" $= 
---   decode utf8 $=
 --   intoCSV defCSVSettings $=
---   myMapRowProcessingConduit $=
---   fromCSV defCSVSettings $=
---   encode utf8 $$
+--   myProcessor $=
+--   fromCSV defCSVSettings $$
 --   sinkFile "test/BigFileOut.csv"
 -- @
 class CSV s r where
