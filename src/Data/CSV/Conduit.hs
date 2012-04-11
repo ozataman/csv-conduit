@@ -16,7 +16,7 @@ module Data.CSV.Conduit
     , Row
     -- * Convenience Functions
     , readCSVFile
-    , transformCSVFile
+    , transformCSV
     , mapCSVFile
     ) where
 
@@ -226,7 +226,7 @@ mapCSVFile
     -- ^ Output file
     -> m ()
 mapCSVFile set f fi fo = 
-  transformCSVFile set (sourceFile fi) (C.concatMap f) (sinkFile fo)
+  transformCSV set (sourceFile fi) (C.concatMap f) (sinkFile fo)
 
 
 -------------------------------------------------------------------------------
@@ -240,8 +240,8 @@ mapCSVFile set f fi fo =
 --
 -- Example - map a function over the rows of a CSV file:
 -- 
--- > transformCSVFile set (sourceFile inFile) (C.map f) (sinkFile outFile)
-transformCSVFile 
+-- > transformCSV set (sourceFile inFile) (C.map f) (sinkFile outFile)
+transformCSV 
     :: (MonadResource m, CSV s a, CSV s' b) 
     => CSVSettings 
     -- ^ Settings to be used for input and output
@@ -252,7 +252,7 @@ transformCSVFile
     -> Sink s' m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
-transformCSVFile set source c sink = 
+transformCSV set source c sink = 
     source $=
     intoCSV set $=
     c $=

@@ -47,29 +47,47 @@ regressions or optimization opportunities.
 
 ### Usage Examples
 
-#### Example 1: Basic Operation 
+
+#### Example #1: Basics Using Convenience API
 
     {-# LANGUAGE OverloadedStrings #-}
 
-    import Data.Conduit.Text
-    import Data.Conduit.Binary
     import Data.Conduit
+    import Data.Conduit.Binary
+    import Data.Conduit.List as CL
     import Data.CSV.Conduit
+    
+    -- Just reverse te columns
+    myProcessor :: Conduit (Row Text) m (Row Text)
+    myProcessor = CL.map reverse
+    
+    test :: IO ()
+    test = runResourceT $ 
+      transformCSV defCSVSettings 
+                   (sourceFile "input.csv") 
+                   myProcessor
+                   (sinkFile "output.csv")
+
+
+#### Example #2: Basics Using Conduit API
+
+    {-# LANGUAGE OverloadedStrings #-}
+
+    import Data.Conduit
+    import Data.Conduit.Binary
+    import Data.CSV.Conduit
+    
+    myProcessor :: Conduit (Row Text) m (Row Text)
+    myProcessor = undefined
     
     -- Let's simply stream from a file, parse the CSV, reserialize it
     -- and push back into another file.
     test :: IO ()
     test = runResourceT $ 
       sourceFile "test/BigFile.csv" $= 
-      decode utf8 $=
-      (intoCSV defCSVSettings 
-        :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $= 
-      fromCSV defCSVSettings $=
-      encode utf8 $$
+      intoCSV defCSVSettings $=
+      myProcessor $=
+      fromCSV defCSVSettings $$
       sinkFile "test/BigFileOut.csv"
-
-
-and we are done. 
-
 
 
