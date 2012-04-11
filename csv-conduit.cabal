@@ -1,14 +1,14 @@
 Name:                csv-conduit
-Version:             0.1
+Version:             0.2
 Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.  
 Homepage:            http://github.com/ozataman/csv-conduit
 License:             BSD3
 License-file:        LICENSE
 Author:              Ozgun Ataman 
 Maintainer:          Ozgun Ataman <ozataman@gmail.com>
-Category:            Data
+Category:            Data, Conduit
 Build-type:          Simple
-Cabal-version:       >=1.2
+Cabal-version:       >=1.6
 Description:
 
   CSV files are the de-facto standard in many situations involving data transfer,

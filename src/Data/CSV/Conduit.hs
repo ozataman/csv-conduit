@@ -6,13 +6,17 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 
 module Data.CSV.Conduit
-    ( CSVeable (..)
+    ( 
+    
+    -- * Fundamental Types
+      CSV (..)
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
     , Row
     -- * Convenience Functions
     , readCSVFile
+    , transformCSVFile
     , mapCSVFile
     ) where
 
@@ -66,24 +70,27 @@ import           Data.CSV.Conduit.Types
 --   encode utf8 $$
 --   sinkFile "test/BigFileOut.csv"
 -- @
-class CSVeable s r where
+class CSV s r where
 
   -----------------------------------------------------------------------------
   -- | Convert a CSV row into strict ByteString equivalent.
   rowToStr :: CSVSettings -> r -> s
 
   -----------------------------------------------------------------------------
-  -- | Turn a stream of 's' into a stream of CSV row type
+  -- | Turn a stream of 's' into a stream of CSV row type. An example
+  -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
   intoCSV :: MonadResource m => CSVSettings -> Conduit s m r
 
   -----------------------------------------------------------------------------
-  -- | Turn a stream of CSV row type back into a stream of 's'
+  -- | Turn a stream of CSV row type back into a stream of 's'. An
+  -- example would be rendering a stream of 'Row' 'ByteString' rows as
+  -- 'Text'.
   fromCSV :: MonadResource m => CSVSettings -> Conduit r m s
 
 
 ------------------------------------------------------------------------------
 -- | 'Row' instance using 'ByteString'
-instance CSVeable ByteString (Row ByteString) where
+instance CSV ByteString (Row ByteString) where
   rowToStr s !r = 
     let 
       sep = B.pack [c2w (csvOutputColSep s)] 
@@ -99,7 +106,7 @@ instance CSVeable ByteString (Row ByteString) where
 
 ------------------------------------------------------------------------------
 -- | 'Row' instance using 'Text'
-instance CSVeable Text (Row Text) where
+instance CSV Text (Row Text) where
   rowToStr s !r = 
     let 
       sep = T.pack [(csvOutputColSep s)] 
@@ -115,7 +122,7 @@ instance CSVeable Text (Row Text) where
 
 -------------------------------------------------------------------------------
 -- | 'Row' instance using 'Text' based on 'ByteString' stream
-instance CSVeable ByteString (Row Text) where
+instance CSV ByteString (Row Text) where
     rowToStr s r = T.encodeUtf8 $ rowToStr s r
     intoCSV set = intoCSV set =$= C.map (map T.decodeUtf8)
     fromCSV set = fromCSV set =$= C.map T.encodeUtf8
@@ -151,7 +158,7 @@ intoCSVRow p = parser =$= puller
 -------------------------------------------------------------------------------
 -- | Generic 'MapRow' instance; any stream type with a 'Row' instance
 -- automatically gets a 'MapRow' instance.
-instance (CSVeable s (Row s'), Ord s', IsString s) => CSVeable s (MapRow s') where
+instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
   rowToStr s r = rowToStr s . M.elems $ r
   intoCSV set = intoCSVMap set
   fromCSV set = fromCSVMap set
@@ -188,32 +195,70 @@ fromCSVMap set = conduitState False push close
 
 
 -------------------------------------------------------------------------------
--- | Read the entire contents of a CSV file into memory
-readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
+-- | Read the entire contents of a CSV file into memory.
+--
+-- An easy way to run this function would be 'runResourceT' after
+-- feeding it all the arguments.
+readCSVFile 
+    :: (MonadResource m, CSV ByteString a) 
+    => CSVSettings 
+    -> FilePath 
+    -- ^ Input file
+    -> m [a]
+readCSVFile set fp = sourceFile fp $= intoCSV set $$ C.consume
 
 
 -------------------------------------------------------------------------------
--- | Map over the rows of a CSV file. Don't be scared by the type
--- signature, this can just run in IO.
+-- | Map over the rows of a CSV file. Provided for convenience for
+-- historical reasons.
+--
+-- An easy way to run this function would be 'runResourceT' after
+-- feeding it all the arguments.
 mapCSVFile 
-    :: (MonadIO m, MonadUnsafeIO m, MonadThrow m, 
-        MonadBaseControl IO m, CSVeable ByteString a, CSVeable ByteString b) 
+    :: (MonadResource m, CSV ByteString a, CSV ByteString b) 
     => CSVSettings 
     -- ^ Settings to use both for input and output
-    -> (a -> b) 
+    -> (a -> [b]) 
     -- ^ A mapping function
     -> FilePath 
     -- ^ Input file
     -> FilePath 
     -- ^ Output file
     -> m ()
-mapCSVFile set f fi fo = runResourceT $
-    sourceFile fi $=
-    intoCSV set $=
-    C.map f $=
-    fromCSV set $$
-    sinkFile fo
+mapCSVFile set f fi fo = 
+  transformCSVFile set (sourceFile fi) (C.concatMap f) (sinkFile fo)
 
+
+-------------------------------------------------------------------------------
+-- | General purpose CSV transformer. Apply a list-like processing
+-- function from 'Data.Conduit.List' to the rows of a CSV stream. You
+-- need to provide a stream data source, a transformer and a stream
+-- data sink.
+--
+-- An easy way to run this function would be 'runResourceT' after
+-- feeding it all the arguments.
+--
+-- Example - map a function over the rows of a CSV file:
+-- 
+-- > transformCSVFile set (sourceFile inFile) (C.map f) (sinkFile outFile)
+transformCSVFile 
+    :: (MonadResource m, CSV s a, CSV s' b) 
+    => CSVSettings 
+    -- ^ Settings to be used for input and output
+    -> Source m s
+    -- ^ A raw stream data source. Ex: 'sourceFile inFile'
+    -> Conduit a m b
+    -- ^ A transforming conduit
+    -> Sink s' m ()
+    -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
+    -> m ()
+transformCSVFile set source c sink = 
+    source $=
+    intoCSV set $=
+    c $=
+    fromCSV set $$
+    sink
+    
 
                                -----------------
                                -- Simple Test --
