@@ -8,16 +8,21 @@
 module Data.CSV.Conduit
     ( 
     
-    -- * Fundamental Types
+    -- * Key Operations
       CSV (..)
+    , writeHeaders
+    , readCSVFile
+    , transformCSV
+    , mapCSVFile
+      
+    -- * Important Types
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
     , Row
-    -- * Convenience Functions
-    , readCSVFile
-    , transformCSV
-    , mapCSVFile
+    
+    -- * Re-exported For Convenience
+    , runResourceT
     ) where
 
 -------------------------------------------------------------------------------
@@ -84,13 +89,14 @@ import           Data.CSV.Conduit.Types
 -- import Data.Conduit.Binary
 -- import Data.CSV.Conduit
 --
--- myProcessor :: Conduit (Row Text) m (Row Text)
+-- myProcessor :: Conduit (MapRow Text) m (MapRow Text)
 -- myProcessor = undefined
 --
 -- test = runResourceT $ 
 --   sourceFile "test/BigFile.csv" $= 
 --   intoCSV defCSVSettings $=
 --   myProcessor $=
+--   writeHeaders defCSVSettings $=
 --   fromCSV defCSVSettings $$
 --   sinkFile "test/BigFileOut.csv"
 -- @
@@ -110,6 +116,9 @@ class CSV s r where
   -- example would be rendering a stream of 'Row' 'ByteString' rows as
   -- 'Text'.
   fromCSV :: MonadResource m => CSVSettings -> Conduit r m s
+
+
+
 
 
 ------------------------------------------------------------------------------
@@ -203,14 +212,30 @@ intoCSVMap set = intoCSV set =$= converter
 
 
 -------------------------------------------------------------------------------
-fromCSVMap set = conduitState False push close
+fromCSVMap set = do
+  r <- C.await
+  case r of
+    Nothing -> return ()
+    Just r' -> push r' >> fromCSVMap set
+    
   where
-    push False r = return $ StateProducing True 
-                   [rowToStr set (M.keys r), "\n", rowToStr set (M.elems r), "\n"]
-    push True r = return $ StateProducing True
-                   [rowToStr set (M.elems r), "\n"]
-    close _ = return []
+    push r = mapM_ C.yield [rowToStr set (M.elems r), "\n"]
 
+
+-------------------------------------------------------------------------------
+-- | Write headers AND the row into the output stream, once. Just
+-- chain this using the 'Monad' instance in your pipeline:
+--
+-- > ... =$= writeHeaders settings >> fromCSV settings( $$ sinkFile "..."
+writeHeaders 
+    :: (MonadResource m, CSV s (Row r), IsString s)
+    => CSVSettings
+    -> Conduit (MapRow r) m s
+writeHeaders set = do
+  r <- C.await
+  case r of
+    Nothing -> return ()
+    Just r' -> mapM_ yield [rowToStr set (M.keys r'), "\n", rowToStr set (M.elems r'), "\n"]
 
 
                           ---------------------------
@@ -289,12 +314,14 @@ transformCSV set source c sink =
                                -----------------
 
 
+
 test :: IO ()
 test = runResourceT $ 
   sourceFile "test/BigFile.csv" $= 
   decode utf8 $=
   (intoCSV defCSVSettings 
     :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $= 
-  fromCSV defCSVSettings $=
+  C.map (id :: MapRow Text -> MapRow Text) $=
+  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $=
   encode utf8 $$
   sinkFile "test/BigFileOut.csv"
