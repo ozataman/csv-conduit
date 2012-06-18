@@ -56,9 +56,10 @@ regressions or optimization opportunities.
     import Data.Conduit.Binary
     import Data.Conduit.List as CL
     import Data.CSV.Conduit
+    import Data.Text (Text)
     
     -- Just reverse te columns
-    myProcessor :: Conduit (Row Text) m (Row Text)
+    myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
     myProcessor = CL.map reverse
     
     test :: IO ()
@@ -76,7 +77,8 @@ regressions or optimization opportunities.
     import Data.Conduit
     import Data.Conduit.Binary
     import Data.CSV.Conduit
-    
+    import Data.Text (Text)
+
     myProcessor :: Conduit (Row Text) m (Row Text)
     myProcessor = undefined
     
