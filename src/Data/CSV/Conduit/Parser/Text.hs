@@ -1,4 +1,4 @@
-{-| 
+{-|
 
   This module exports the underlying Attoparsec row parser. This is helpful if
   you want to do some ad-hoc CSV string parsing.
@@ -14,14 +14,14 @@ module Data.CSV.Conduit.Parser.Text
 
 -------------------------------------------------------------------------------
 import           Control.Applicative
-import           Control.Monad (mzero, mplus, foldM, when, liftM)
-import           Control.Monad.IO.Class (liftIO, MonadIO)
-import           Data.Attoparsec.Text as P hiding (take)
-import qualified Data.Attoparsec.Text as T
-import qualified Data.Map as M
-import           Data.Text (Text)
-import qualified Data.Text as T
-import           Data.Word (Word8)
+import           Control.Monad          (foldM, liftM, mplus, mzero, when)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Data.Attoparsec.Text   as P hiding (take)
+import qualified Data.Attoparsec.Text   as T
+import qualified Data.Map               as M
+import           Data.Text              (Text)
+import qualified Data.Text              as T
+import           Data.Word              (Word8)
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Types
 -------------------------------------------------------------------------------
@@ -63,11 +63,11 @@ row csvs = csvrow csvs <|> badrow
 
 
 badrow :: Parser (Maybe (Row Text))
-badrow = P.takeWhile (not . T.isEndOfLine) *> 
+badrow = P.takeWhile (not . T.isEndOfLine) *>
          (T.endOfLine <|> T.endOfInput) *> return Nothing
 
 csvrow :: CSVSettings -> Parser (Maybe (Row Text))
-csvrow c = 
+csvrow c =
   let rowbody = (quotedField' <|> (field c)) `sepBy` T.char (csvSep c)
       properrow = rowbody <* (T.endOfLine <|> P.endOfInput)
       quotedField' = case csvQuoteChar c of
@@ -78,22 +78,21 @@ csvrow c =
     return $ Just res
 
 field :: CSVSettings -> Parser Text
-field s = P.takeWhile (isFieldChar s) 
+field s = P.takeWhile (isFieldChar s)
 
 isFieldChar s = notInClass xs'
   where xs = csvSep s : "\n\r"
-        xs' = case csvQuoteChar s of 
+        xs' = case csvQuoteChar s of
           Nothing -> xs
           Just x -> x : xs
 
 quotedField :: Char -> Parser Text
-quotedField c = 
+quotedField c = do
   let quoted = string dbl *> return c
       dbl = T.pack [c,c]
-  in do
-  T.char c 
+  T.char c
   f <- many (T.notChar c <|> quoted)
-  T.char c 
+  T.char c
   return $ T.pack f
 
 

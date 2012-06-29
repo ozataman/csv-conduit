@@ -1,59 +1,61 @@
-{-# LANGUAGE OverloadedStrings, BangPatterns #-}
-{-# LANGUAGE PackageImports #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE PackageImports        #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE TypeSynonymInstances  #-}
 
 module Data.CSV.Conduit
-    ( 
-    
+    (
+
     -- * Key Operations
       CSV (..)
     , writeHeaders
     , readCSVFile
     , transformCSV
     , mapCSVFile
-      
+
     -- * Important Types
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
     , Row
-    
+
     -- * Re-exported For Convenience
     , runResourceT
     ) where
 
 -------------------------------------------------------------------------------
-import           Control.Applicative        hiding (many)
-import           Control.Exception          (bracket, SomeException)
-import           Control.Monad              (mzero, mplus, foldM, when, liftM)
-import           Control.Monad.IO.Class     (liftIO, MonadIO)
+import           Control.Applicative                hiding (many)
+import           Control.Exception                  (SomeException, bracket)
+import           Control.Monad                      (foldM, liftM, mplus, mzero, when)
+import           Control.Monad.IO.Class             (MonadIO, liftIO)
 import           Control.Monad.Trans.Control
-import           Data.Attoparsec            as P hiding (take)
-import qualified Data.Attoparsec.Char8      as C8
-import qualified Data.ByteString            as B
-import           Data.ByteString.Char8      (ByteString)
-import qualified Data.ByteString.Char8      as B8
-import           Data.ByteString.Internal   (c2w)
-import           Data.Conduit as C
+import           Data.Attoparsec                    as P hiding (take)
+import qualified Data.Attoparsec.Char8              as C8
+import qualified Data.ByteString                    as B
+import           Data.ByteString.Char8              (ByteString)
+import qualified Data.ByteString.Char8              as B8
+import           Data.ByteString.Internal           (c2w)
+import           Data.Conduit                       as C
 import           Data.Conduit.Attoparsec
-import           Data.Conduit.Binary (sourceFile, sinkFile)
-import qualified Data.Conduit.List as C
+import           Data.Conduit.Binary                (sinkFile, sourceFile)
+import qualified Data.Conduit.List                  as C
 import           Data.Conduit.Text
-import qualified Data.Map                   as M
+import qualified Data.Map                           as M
 import           Data.String
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
-import           Data.Word                  (Word8)
-import           Safe                       (headMay)
+import           Data.Text                          (Text)
+import qualified Data.Text                          as T
+import qualified Data.Text.Encoding                 as T
+import           Data.Word                          (Word8)
+import           Safe                               (headMay)
 import           System.Directory
-import           System.PosixCompat.Files   (getFileStatus, fileSize)
+import           System.PosixCompat.Files           (fileSize, getFileStatus)
 -------------------------------------------------------------------------------
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
-import qualified Data.CSV.Conduit.Parser.Text as TP
+import qualified Data.CSV.Conduit.Parser.Text       as TP
 import           Data.CSV.Conduit.Types
 -------------------------------------------------------------------------------
 
@@ -62,9 +64,9 @@ import           Data.CSV.Conduit.Types
 -- | Represents types 'r' that are CSV-like and can be converted
 -- to/from an underlying stream of type 's'.
 --
--- 
+--
 -- Example #1: Basics Using Convenience API
--- 
+--
 -- @
 -- import Data.Conduit
 -- import Data.Conduit.Binary
@@ -73,17 +75,17 @@ import           Data.CSV.Conduit.Types
 --
 -- myProcessor :: Conduit (Row Text) m (Row Text)
 -- myProcessor = CL.map reverse
--- 
--- test = runResourceT $ 
---   transformCSV defCSVSettings 
---                (sourceFile "input.csv") 
+--
+-- test = runResourceT $
+--   transformCSV defCSVSettings
+--                (sourceFile "input.csv")
 --                myProcessor
 --                (sinkFile "output.csv")
 -- @
 --
 --
 -- Example #2: Basics Using Conduit API
--- 
+--
 -- @
 -- import Data.Conduit
 -- import Data.Conduit.Binary
@@ -92,12 +94,11 @@ import           Data.CSV.Conduit.Types
 -- myProcessor :: Conduit (MapRow Text) m (MapRow Text)
 -- myProcessor = undefined
 --
--- test = runResourceT $ 
---   sourceFile "test/BigFile.csv" $= 
+-- test = runResourceT $
+--   sourceFile "test/BigFile.csv" $=
 --   intoCSV defCSVSettings $=
 --   myProcessor $=
---   writeHeaders defCSVSettings $=
---   fromCSV defCSVSettings $$
+--   (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $$
 --   sinkFile "test/BigFileOut.csv"
 -- @
 class CSV s r where
@@ -124,9 +125,9 @@ class CSV s r where
 ------------------------------------------------------------------------------
 -- | 'Row' instance using 'ByteString'
 instance CSV ByteString (Row ByteString) where
-  rowToStr s !r = 
-    let 
-      sep = B.pack [c2w (csvOutputColSep s)] 
+  rowToStr s !r =
+    let
+      sep = B.pack [c2w (csvOutputColSep s)]
       wrapField !f = case (csvOutputQuoteChar s) of
         Just !x -> x `B8.cons` escape x f `B8.snoc` x
         otherwise -> f
@@ -140,9 +141,9 @@ instance CSV ByteString (Row ByteString) where
 ------------------------------------------------------------------------------
 -- | 'Row' instance using 'Text'
 instance CSV Text (Row Text) where
-  rowToStr s !r = 
-    let 
-      sep = T.pack [(csvOutputColSep s)] 
+  rowToStr s !r =
+    let
+      sep = T.pack [(csvOutputColSep s)]
       wrapField !f = case (csvOutputQuoteChar s) of
         Just !x -> x `T.cons` escape x f `T.snoc` x
         otherwise -> f
@@ -200,9 +201,9 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 -------------------------------------------------------------------------------
 intoCSVMap set = intoCSV set =$= converter
   where
-    converter = conduitState Nothing push close 
+    converter = conduitState Nothing push close
       where
-        push Nothing row = 
+        push Nothing row =
           case row of
             [] -> return $ StateProducing Nothing []
             xs -> return $ StateProducing (Just xs) []
@@ -217,7 +218,7 @@ fromCSVMap set = do
   case r of
     Nothing -> return ()
     Just r' -> push r' >> fromCSVMap set
-    
+
   where
     push r = mapM_ C.yield [rowToStr set (M.elems r), "\n"]
 
@@ -227,7 +228,7 @@ fromCSVMap set = do
 -- chain this using the 'Monad' instance in your pipeline:
 --
 -- > ... =$= writeHeaders settings >> fromCSV settings( $$ sinkFile "..."
-writeHeaders 
+writeHeaders
     :: (MonadResource m, CSV s (Row r), IsString s)
     => CSVSettings
     -> Conduit (MapRow r) m s
@@ -248,10 +249,10 @@ writeHeaders set = do
 --
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
-readCSVFile 
-    :: (MonadResource m, CSV ByteString a) 
-    => CSVSettings 
-    -> FilePath 
+readCSVFile
+    :: (MonadResource m, CSV ByteString a)
+    => CSVSettings
+    -> FilePath
     -- ^ Input file
     -> m [a]
 readCSVFile set fp = sourceFile fp $= intoCSV set $$ C.consume
@@ -263,18 +264,18 @@ readCSVFile set fp = sourceFile fp $= intoCSV set $$ C.consume
 --
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
-mapCSVFile 
-    :: (MonadResource m, CSV ByteString a, CSV ByteString b) 
-    => CSVSettings 
+mapCSVFile
+    :: (MonadResource m, CSV ByteString a, CSV ByteString b)
+    => CSVSettings
     -- ^ Settings to use both for input and output
-    -> (a -> [b]) 
+    -> (a -> [b])
     -- ^ A mapping function
-    -> FilePath 
+    -> FilePath
     -- ^ Input file
-    -> FilePath 
+    -> FilePath
     -- ^ Output file
     -> m ()
-mapCSVFile set f fi fo = 
+mapCSVFile set f fi fo =
   transformCSV set (sourceFile fi) (C.concatMap f) (sinkFile fo)
 
 
@@ -288,11 +289,11 @@ mapCSVFile set f fi fo =
 -- feeding it all the arguments.
 --
 -- Example - map a function over the rows of a CSV file:
--- 
+--
 -- > transformCSV set (sourceFile inFile) (C.map f) (sinkFile outFile)
-transformCSV 
-    :: (MonadResource m, CSV s a, CSV s' b) 
-    => CSVSettings 
+transformCSV
+    :: (MonadResource m, CSV s a, CSV s' b)
+    => CSVSettings
     -- ^ Settings to be used for input and output
     -> Source m s
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
@@ -301,13 +302,13 @@ transformCSV
     -> Sink s' m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
-transformCSV set source c sink = 
+transformCSV set source c sink =
     source $=
     intoCSV set $=
     c $=
     fromCSV set $$
     sink
-    
+
 
                                -----------------
                                -- Simple Test --
@@ -316,11 +317,11 @@ transformCSV set source c sink =
 
 
 test :: IO ()
-test = runResourceT $ 
-  sourceFile "test/BigFile.csv" $= 
+test = runResourceT $
+  sourceFile "test/BigFile.csv" $=
   decode utf8 $=
-  (intoCSV defCSVSettings 
-    :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $= 
+  (intoCSV defCSVSettings
+    :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $=
   C.map (id :: MapRow Text -> MapRow Text) $=
   (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $=
   encode utf8 $$
