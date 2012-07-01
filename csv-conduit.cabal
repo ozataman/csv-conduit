@@ -1,16 +1,15 @@
 Name:                csv-conduit
 Version:             0.2.1.1
-Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.  
+Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.
 Homepage:            http://github.com/ozataman/csv-conduit
 License:             BSD3
 License-file:        LICENSE
-Author:              Ozgun Ataman 
+Author:              Ozgun Ataman
 Maintainer:          Ozgun Ataman <ozataman@gmail.com>
 Category:            Data, Conduit
 Build-type:          Simple
-Cabal-version:       >=1.6
+Cabal-version:       >= 1.9.2
 Description:
-
   CSV files are the de-facto standard in many situations involving data transfer,
   particularly when dealing with enterprise application or disparate database
   systems.
@@ -39,8 +38,8 @@ Description:
   process, it has been greatly simplified thanks to the modular nature
   of the conduits library.
 
-  . 
-  
+  .
+
   Following the port to conduits, the library has also gained the
   ability to parameterize on the stream type and work both with
   ByteString and Text.
@@ -52,7 +51,7 @@ Description:
 
   <http://github.com/ozataman/csv-conduit>
   .
-  
+
 
 extra-source-files:
   README.markdown
@@ -60,27 +59,60 @@ extra-source-files:
   test/test.csv
   test/Test.hs
 
-Library
-  hs-source-dirs: src
-  Exposed-modules:     
+library
+  exposed-modules:
       Data.CSV.Conduit
       Data.CSV.Conduit.Parser.ByteString
       Data.CSV.Conduit.Parser.Text
-  Other-modules:
+  other-modules:
       Data.CSV.Conduit.Types
+  ghc-options: -Wall -Werror
+  hs-source-dirs: src
   build-depends:
       attoparsec >= 0.10
     , attoparsec-conduit
-    , conduit == 0.4.*
     , base >= 4 && < 5
-    , containers >= 0.3
-    , directory
     , bytestring
-    , text
-    , transformers >= 0.2
-    , safe
-    , unix-compat >= 0.2.1.1
+    , conduit == 0.5.*
+    , containers >= 0.3
     , monad-control
-  extensions:
-    ScopedTypeVariables
+    , text
   ghc-options: -funbox-strict-fields
+
+test-suite test
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  ghc-options: -Wall -Werror
+  hs-source-dirs: test
+  build-depends:
+      base >= 4 && < 5
+    , bytestring
+    , containers >= 0.3
+    , csv-conduit
+    , directory
+    , HUnit >= 1.2
+    , test-framework
+    , test-framework-hunit
+    , text
+
+flag bench
+  default: False
+  manual: True
+
+executable bench
+  main-is: Bench.hs
+  if flag(bench)
+    buildable: True
+  else
+    buildable: False
+  ghc-options: -Wall -Werror
+  hs-source-dirs: test
+  build-depends:
+      base >= 4 && < 5
+    , bytestring
+    , containers >= 0.3
+    , csv-conduit
+    , directory
+    , text
+  ghc-options: -rtsopts
+  ghc-prof-options: -rtsopts -caf-all -auto-all
