@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
@@ -28,13 +27,7 @@ module Data.CSV.Conduit
     ) where
 
 -------------------------------------------------------------------------------
-import           Control.Applicative                hiding (many)
-import           Control.Exception                  (SomeException, bracket)
-import           Control.Monad                      (foldM, liftM, mplus, mzero, when)
-import           Control.Monad.IO.Class             (MonadIO, liftIO)
-import           Control.Monad.Trans.Control
-import           Data.Attoparsec                    as P hiding (take)
-import qualified Data.Attoparsec.Char8              as C8
+import           Data.Attoparsec.Types              (Parser)
 import qualified Data.ByteString                    as B
 import           Data.ByteString.Char8              (ByteString)
 import qualified Data.ByteString.Char8              as B8
@@ -43,16 +36,11 @@ import           Data.Conduit                       as C
 import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary                (sinkFile, sourceFile)
 import qualified Data.Conduit.List                  as C
-import           Data.Conduit.Text
 import qualified Data.Map                           as M
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
-import           Data.Word                          (Word8)
-import           Safe                               (headMay)
-import           System.Directory
-import           System.PosixCompat.Files           (fileSize, getFileStatus)
 -------------------------------------------------------------------------------
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
@@ -128,9 +116,9 @@ instance CSV ByteString (Row ByteString) where
   rowToStr s !r =
     let
       sep = B.pack [c2w (csvOutputColSep s)]
-      wrapField !f = case (csvOutputQuoteChar s) of
+      wrapField !f = case csvOutputQuoteChar s of
         Just !x -> x `B8.cons` escape x f `B8.snoc` x
-        otherwise -> f
+        _ -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
 
@@ -143,10 +131,10 @@ instance CSV ByteString (Row ByteString) where
 instance CSV Text (Row Text) where
   rowToStr s !r =
     let
-      sep = T.pack [(csvOutputColSep s)]
-      wrapField !f = case (csvOutputQuoteChar s) of
+      sep = T.pack [csvOutputColSep s]
+      wrapField !f = case csvOutputQuoteChar s of
         Just !x -> x `T.cons` escape x f `T.snoc` x
-        otherwise -> f
+        _ -> f
       escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
     in T.intercalate sep . map wrapField $ r
 
@@ -164,20 +152,24 @@ instance CSV ByteString (Row Text) where
 
 
 -------------------------------------------------------------------------------
-fromCSVRow set = conduitState init push close
+fromCSVRow :: (Monad m, IsString output, CSV output input)
+           => CSVSettings -> Conduit input m output
+fromCSVRow set = conduitState setup push close
   where
-    init = ()
+    setup = ()
     push st r = return $ StateProducing st [rowToStr set r, "\n"]
     close _ = return []
 
 
 -------------------------------------------------------------------------------
+intoCSVRow :: (MonadThrow m, AttoparsecInput a)
+           => Parser a (Maybe c) -> Pipe a c m ()
 intoCSVRow p = parser =$= puller
   where
     parser = sequenceSink () seqSink
     seqSink _ = do
-      p <- sinkParser p
-      return $ Emit () [p]
+      p' <- sinkParser p
+      return $ Emit () [p']
     puller = do
       inc <- await
       case inc of
@@ -199,6 +191,8 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 
 
 -------------------------------------------------------------------------------
+intoCSVMap :: (Ord a, MonadResource m, CSV s [a])
+           => CSVSettings -> Pipe s (M.Map a a) m ()
 intoCSVMap set = intoCSV set =$= converter
   where
     converter = conduitState Nothing push close
@@ -213,6 +207,8 @@ intoCSVMap set = intoCSV set =$= converter
 
 
 -------------------------------------------------------------------------------
+fromCSVMap :: (Monad m, IsString s, CSV s [a])
+           => CSVSettings -> Pipe (M.Map k a) s m ()
 fromCSVMap set = do
   r <- C.await
   case r of
@@ -308,21 +304,3 @@ transformCSV set source c sink =
     c $=
     fromCSV set $$
     sink
-
-
-                               -----------------
-                               -- Simple Test --
-                               -----------------
-
-
-
-test :: IO ()
-test = runResourceT $
-  sourceFile "test/BigFile.csv" $=
-  decode utf8 $=
-  (intoCSV defCSVSettings
-    :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $=
-  C.map (id :: MapRow Text -> MapRow Text) $=
-  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $=
-  encode utf8 $$
-  sinkFile "test/BigFileOut.csv"

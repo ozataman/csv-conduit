@@ -1,12 +1,9 @@
-{-# LANGUAGE OverloadedStrings, BangPatterns #-}
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
 module Data.CSV.Conduit.Types where
 
 -------------------------------------------------------------------------------
-import qualified Data.ByteString as B
-import Data.Text (Text)
 import qualified Data.Map as M
 -------------------------------------------------------------------------------
 

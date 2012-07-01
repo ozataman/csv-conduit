@@ -1,10 +1,10 @@
 Name:                csv-conduit
 Version:             0.2.1.1
-Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.  
+Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.
 Homepage:            http://github.com/ozataman/csv-conduit
 License:             BSD3
 License-file:        LICENSE
-Author:              Ozgun Ataman 
+Author:              Ozgun Ataman
 Maintainer:          Ozgun Ataman <ozataman@gmail.com>
 Category:            Data, Conduit
 Build-type:          Simple
@@ -39,8 +39,8 @@ Description:
   process, it has been greatly simplified thanks to the modular nature
   of the conduits library.
 
-  . 
-  
+  .
+
   Following the port to conduits, the library has also gained the
   ability to parameterize on the stream type and work both with
   ByteString and Text.
@@ -52,7 +52,7 @@ Description:
 
   <http://github.com/ozataman/csv-conduit>
   .
-  
+
 
 extra-source-files:
   README.markdown
@@ -61,26 +61,27 @@ extra-source-files:
   test/Test.hs
 
 Library
-  hs-source-dirs: src
-  Exposed-modules:     
+  Exposed-modules:
       Data.CSV.Conduit
       Data.CSV.Conduit.Parser.ByteString
       Data.CSV.Conduit.Parser.Text
   Other-modules:
       Data.CSV.Conduit.Types
+  ghc-options: -Wall -Werror
+  hs-source-dirs: src
   build-depends:
       attoparsec >= 0.10
     , attoparsec-conduit
-    , conduit == 0.4.*
     , base >= 4 && < 5
+    , bytestring
+    , conduit == 0.4.*
     , containers >= 0.3
     , directory
-    , bytestring
+    , monad-control
+    , safe
     , text
     , transformers >= 0.2
-    , safe
     , unix-compat >= 0.2.1.1
-    , monad-control
   extensions:
     ScopedTypeVariables
   ghc-options: -funbox-strict-fields
@@ -88,6 +89,7 @@ Library
 test-suite test
   type: exitcode-stdio-1.0
   main-is: Test.hs
+  ghc-options: -Wall -Werror
   hs-source-dirs: test
   build-depends:
       base >= 4 && < 5
@@ -96,14 +98,11 @@ test-suite test
     , csv-conduit
     , directory
     , HUnit >= 1.2
-    , QuickCheck >= 2
     , test-framework
-    , test-framework-quickcheck2 == 0.2.12.*
     , test-framework-hunit
     , text
   extensions:
     ScopedTypeVariables
-    OverloadedStrings
 
 flag bench
   default: False
@@ -115,6 +114,7 @@ executable bench
     buildable: True
   else
     buildable: False
+  ghc-options: -Wall -Werror
   hs-source-dirs: test
   build-depends:
       base >= 4 && < 5
@@ -125,6 +125,5 @@ executable bench
     , text
   extensions:
     ScopedTypeVariables
-    OverloadedStrings
   ghc-options: -rtsopts
   ghc-prof-options: -rtsopts -caf-all -auto-all
