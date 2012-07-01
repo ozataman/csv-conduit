@@ -8,7 +8,7 @@ Author:              Ozgun Ataman
 Maintainer:          Ozgun Ataman <ozataman@gmail.com>
 Category:            Data, Conduit
 Build-type:          Simple
-Cabal-version:       >=1.6
+Cabal-version:       >= 1.9.2
 Description:
 
   CSV files are the de-facto standard in many situations involving data transfer,
@@ -84,3 +84,47 @@ Library
   extensions:
     ScopedTypeVariables
   ghc-options: -funbox-strict-fields
+
+test-suite test
+  type: exitcode-stdio-1.0
+  main-is: Test.hs
+  hs-source-dirs: test
+  build-depends:
+      base >= 4 && < 5
+    , bytestring
+    , containers >= 0.3
+    , csv-conduit
+    , directory
+    , HUnit >= 1.2
+    , QuickCheck >= 2
+    , test-framework
+    , test-framework-quickcheck2 == 0.2.12.*
+    , test-framework-hunit
+    , text
+  extensions:
+    ScopedTypeVariables
+    OverloadedStrings
+
+flag bench
+  default: False
+  manual: True
+
+executable bench
+  main-is: Bench.hs
+  if flag(bench)
+    buildable: True
+  else
+    buildable: False
+  hs-source-dirs: test
+  build-depends:
+      base >= 4 && < 5
+    , bytestring
+    , containers >= 0.3
+    , csv-conduit
+    , directory
+    , text
+  extensions:
+    ScopedTypeVariables
+    OverloadedStrings
+  ghc-options: -rtsopts
+  ghc-prof-options: -rtsopts -caf-all -auto-all
