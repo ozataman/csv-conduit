@@ -59,12 +59,12 @@ extra-source-files:
   test/test.csv
   test/Test.hs
 
-Library
-  Exposed-modules:
+library
+  exposed-modules:
       Data.CSV.Conduit
       Data.CSV.Conduit.Parser.ByteString
       Data.CSV.Conduit.Parser.Text
-  Other-modules:
+  other-modules:
       Data.CSV.Conduit.Types
   ghc-options: -Wall -Werror
   hs-source-dirs: src
@@ -75,14 +75,8 @@ Library
     , bytestring
     , conduit == 0.5.*
     , containers >= 0.3
-    , directory
     , monad-control
-    , safe
     , text
-    , transformers >= 0.2
-    , unix-compat >= 0.2.1.1
-  extensions:
-    ScopedTypeVariables
   ghc-options: -funbox-strict-fields
 
 test-suite test
@@ -100,8 +94,6 @@ test-suite test
     , test-framework
     , test-framework-hunit
     , text
-  extensions:
-    ScopedTypeVariables
 
 flag bench
   default: False
@@ -122,7 +114,5 @@ executable bench
     , csv-conduit
     , directory
     , text
-  extensions:
-    ScopedTypeVariables
   ghc-options: -rtsopts
   ghc-prof-options: -rtsopts -caf-all -auto-all
