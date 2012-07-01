@@ -32,7 +32,7 @@ import qualified Data.ByteString                    as B
 import           Data.ByteString.Char8              (ByteString)
 import qualified Data.ByteString.Char8              as B8
 import           Data.ByteString.Internal           (c2w)
-import           Data.Conduit                       as C
+import           Data.Conduit
 import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary                (sinkFile, sourceFile)
 import qualified Data.Conduit.List                  as C
@@ -152,31 +152,27 @@ instance CSV ByteString (Row Text) where
 
 
 -------------------------------------------------------------------------------
-fromCSVRow :: (Monad m, IsString output, CSV output input)
-           => CSVSettings -> Conduit input m output
-fromCSVRow set = conduitState setup push close
-  where
-    setup = ()
-    push st r = return $ StateProducing st [rowToStr set r, "\n"]
-    close _ = return []
+fromCSVRow :: (Monad m, IsString s, CSV s r)
+           => CSVSettings -> Conduit r m s
+fromCSVRow set = do
+  mrow <- await
+  case mrow of
+    Nothing -> return ()
+    Just row -> mapM_ yield [rowToStr set row, "\n"] >> fromCSVRow set
 
 
 -------------------------------------------------------------------------------
-intoCSVRow :: (MonadThrow m, AttoparsecInput a)
-           => Parser a (Maybe c) -> Pipe a c m ()
-intoCSVRow p = parser =$= puller
+intoCSVRow :: (MonadThrow m, AttoparsecInput i)
+           => Parser i (Maybe o) -> Conduit i m o
+intoCSVRow p = conduitParser p =$= puller
   where
-    parser = sequenceSink () seqSink
-    seqSink _ = do
-      p' <- sinkParser p
-      return $ Emit () [p']
     puller = do
       inc <- await
       case inc of
         Nothing -> return ()
-        Just i ->
-          case i of
-            Just i' -> yield i' >> puller
+        Just (_, mi) ->
+          case mi of
+            Just i -> yield i >> puller
             Nothing -> puller
 
 
@@ -192,31 +188,33 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 
 -------------------------------------------------------------------------------
 intoCSVMap :: (Ord a, MonadResource m, CSV s [a])
-           => CSVSettings -> Pipe s (M.Map a a) m ()
-intoCSVMap set = intoCSV set =$= converter
+           => CSVSettings -> Conduit s m (MapRow a)
+intoCSVMap set = intoCSV set =$= converter Nothing
   where
-    converter = conduitState Nothing push close
-      where
-        push Nothing row =
-          case row of
-            [] -> return $ StateProducing Nothing []
-            xs -> return $ StateProducing (Just xs) []
-        push st@(Just hs) row = return $ StateProducing st [toMapCSV hs row]
-        toMapCSV !headers !fs = M.fromList $ zip headers fs
-        close _ = return []
+    converter Nothing = do
+      mrow <- await
+      case mrow of
+        Nothing -> return ()
+        Just [] -> converter Nothing
+        justHs -> converter justHs
+    converter st@(Just hs) = do
+      mrow <- await
+      case mrow of
+        Nothing -> return ()
+        Just row -> yield (toMapCSV hs row) >> converter st
+    toMapCSV !headers !fs = M.fromList $ zip headers fs
 
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
-           => CSVSettings -> Pipe (M.Map k a) s m ()
+           => CSVSettings -> Conduit (M.Map k a) m s
 fromCSVMap set = do
-  r <- C.await
-  case r of
+  mrow <- await
+  case mrow of
     Nothing -> return ()
-    Just r' -> push r' >> fromCSVMap set
-
+    Just row -> push row >> fromCSVMap set
   where
-    push r = mapM_ C.yield [rowToStr set (M.elems r), "\n"]
+    push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
 
 
 -------------------------------------------------------------------------------
@@ -229,10 +227,13 @@ writeHeaders
     => CSVSettings
     -> Conduit (MapRow r) m s
 writeHeaders set = do
-  r <- C.await
-  case r of
+  mrow <- await
+  case mrow of
     Nothing -> return ()
-    Just r' -> mapM_ yield [rowToStr set (M.keys r'), "\n", rowToStr set (M.elems r'), "\n"]
+    Just row -> mapM_ yield [ rowToStr set (M.keys row)
+                            , "\n"
+                            , rowToStr set (M.elems row)
+                            , "\n" ]
 
 
                           ---------------------------

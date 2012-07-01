@@ -10,7 +10,6 @@ Category:            Data, Conduit
 Build-type:          Simple
 Cabal-version:       >= 1.9.2
 Description:
-
   CSV files are the de-facto standard in many situations involving data transfer,
   particularly when dealing with enterprise application or disparate database
   systems.
@@ -74,7 +73,7 @@ Library
     , attoparsec-conduit
     , base >= 4 && < 5
     , bytestring
-    , conduit == 0.4.*
+    , conduit == 0.5.*
     , containers >= 0.3
     , directory
     , monad-control
