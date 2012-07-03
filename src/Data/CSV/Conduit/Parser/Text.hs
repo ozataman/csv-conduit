@@ -14,14 +14,11 @@ module Data.CSV.Conduit.Parser.Text
 
 -------------------------------------------------------------------------------
 import           Control.Applicative
-import           Control.Monad          (foldM, liftM, mplus, mzero, when)
-import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad          (mzero)
 import           Data.Attoparsec.Text   as P hiding (take)
 import qualified Data.Attoparsec.Text   as T
-import qualified Data.Map               as M
 import           Data.Text              (Text)
 import qualified Data.Text              as T
-import           Data.Word              (Word8)
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Types
 -------------------------------------------------------------------------------
@@ -45,11 +42,11 @@ csv :: CSVSettings -> Parser [Row Text]
 csv s = do
   r <- row s
   end <- atEnd
-  case end of
-    True -> case r of
+  if end
+    then case r of
       Just x -> return [x]
       Nothing -> return []
-    False -> do
+    else do
       rest <- csv s
       return $ case r of
         Just x -> x : rest
@@ -68,7 +65,7 @@ badrow = P.takeWhile (not . T.isEndOfLine) *>
 
 csvrow :: CSVSettings -> Parser (Maybe (Row Text))
 csvrow c =
-  let rowbody = (quotedField' <|> (field c)) `sepBy` T.char (csvSep c)
+  let rowbody = (quotedField' <|> field c) `sepBy` T.char (csvSep c)
       properrow = rowbody <* (T.endOfLine <|> P.endOfInput)
       quotedField' = case csvQuoteChar c of
           Nothing -> mzero
@@ -80,6 +77,7 @@ csvrow c =
 field :: CSVSettings -> Parser Text
 field s = P.takeWhile (isFieldChar s)
 
+isFieldChar :: CSVSettings -> Char -> Bool
 isFieldChar s = notInClass xs'
   where xs = csvSep s : "\n\r"
         xs' = case csvQuoteChar s of
@@ -90,9 +88,9 @@ quotedField :: Char -> Parser Text
 quotedField c = do
   let quoted = string dbl *> return c
       dbl = T.pack [c,c]
-  T.char c
+  _ <- T.char c
   f <- many (T.notChar c <|> quoted)
-  T.char c
+  _ <- T.char c
   return $ T.pack f
 
 

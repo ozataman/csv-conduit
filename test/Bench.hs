@@ -3,12 +3,19 @@ module Main where
 
 import qualified Data.ByteString.Char8 as B
 import Data.Map ((!))
+import Data.Text
 import System.Directory
-import Data.CSV.Enumerator
+import System.Environment
+import Data.CSV.Conduit
 
 
-main = mapCSVFile "BigFile.csv" defCSVSettings idF "TestOut.csv"
+main = do
+    inPath:_ <- getArgs
+    runResourceT $ mapCSVFile defCSVSettings idF inPath outPath
+    removeFile outPath
+  where
+    outPath = "test/testOut.csv"
 
 
-idF :: MapRow -> [MapRow]
+idF :: Row Text -> [Row Text]
 idF = return . id

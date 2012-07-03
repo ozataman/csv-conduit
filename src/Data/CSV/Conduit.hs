@@ -3,7 +3,6 @@
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
-{-# LANGUAGE PackageImports        #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
 
@@ -28,31 +27,20 @@ module Data.CSV.Conduit
     ) where
 
 -------------------------------------------------------------------------------
-import           Control.Applicative                hiding (many)
-import           Control.Exception                  (SomeException, bracket)
-import           Control.Monad                      (foldM, liftM, mplus, mzero, when)
-import           Control.Monad.IO.Class             (MonadIO, liftIO)
-import           Control.Monad.Trans.Control
-import           Data.Attoparsec                    as P hiding (take)
-import qualified Data.Attoparsec.Char8              as C8
+import           Data.Attoparsec.Types              (Parser)
 import qualified Data.ByteString                    as B
 import           Data.ByteString.Char8              (ByteString)
 import qualified Data.ByteString.Char8              as B8
 import           Data.ByteString.Internal           (c2w)
-import           Data.Conduit                       as C
+import           Data.Conduit
 import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary                (sinkFile, sourceFile)
 import qualified Data.Conduit.List                  as C
-import           Data.Conduit.Text
 import qualified Data.Map                           as M
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
-import           Data.Word                          (Word8)
-import           Safe                               (headMay)
-import           System.Directory
-import           System.PosixCompat.Files           (fileSize, getFileStatus)
 -------------------------------------------------------------------------------
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
@@ -110,13 +98,13 @@ class CSV s r where
   -----------------------------------------------------------------------------
   -- | Turn a stream of 's' into a stream of CSV row type. An example
   -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
-  intoCSV :: MonadResource m => CSVSettings -> Conduit s m r
+  intoCSV :: MonadResource m => CSVSettings -> GLInfConduit s m r
 
   -----------------------------------------------------------------------------
   -- | Turn a stream of CSV row type back into a stream of 's'. An
   -- example would be rendering a stream of 'Row' 'ByteString' rows as
   -- 'Text'.
-  fromCSV :: MonadResource m => CSVSettings -> Conduit r m s
+  fromCSV :: MonadResource m => CSVSettings -> GInfConduit r m s
 
 
 
@@ -128,9 +116,9 @@ instance CSV ByteString (Row ByteString) where
   rowToStr s !r =
     let
       sep = B.pack [c2w (csvOutputColSep s)]
-      wrapField !f = case (csvOutputQuoteChar s) of
+      wrapField !f = case csvOutputQuoteChar s of
         Just !x -> x `B8.cons` escape x f `B8.snoc` x
-        otherwise -> f
+        _ -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
 
@@ -143,10 +131,10 @@ instance CSV ByteString (Row ByteString) where
 instance CSV Text (Row Text) where
   rowToStr s !r =
     let
-      sep = T.pack [(csvOutputColSep s)]
-      wrapField !f = case (csvOutputQuoteChar s) of
+      sep = T.pack [csvOutputColSep s]
+      wrapField !f = case csvOutputQuoteChar s of
         Just !x -> x `T.cons` escape x f `T.snoc` x
-        otherwise -> f
+        _ -> f
       escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
     in T.intercalate sep . map wrapField $ r
 
@@ -158,33 +146,33 @@ instance CSV Text (Row Text) where
 -- | 'Row' instance using 'Text' based on 'ByteString' stream
 instance CSV ByteString (Row Text) where
     rowToStr s r = T.encodeUtf8 $ rowToStr s r
-    intoCSV set = intoCSV set =$= C.map (map T.decodeUtf8)
-    fromCSV set = fromCSV set =$= C.map T.encodeUtf8
+    intoCSV set = intoCSV set >+> C.map (map T.decodeUtf8)
+    fromCSV set = fromCSV set >+> C.map T.encodeUtf8
 
 
 
 -------------------------------------------------------------------------------
-fromCSVRow set = conduitState init push close
-  where
-    init = ()
-    push st r = return $ StateProducing st [rowToStr set r, "\n"]
-    close _ = return []
+fromCSVRow :: (Monad m, IsString s, CSV s r)
+           => CSVSettings -> GInfConduit r m s
+fromCSVRow set = do
+  erow <- awaitE
+  case erow of
+    Left ures -> return ures
+    Right row -> mapM_ yield [rowToStr set row, "\n"] >> fromCSVRow set
 
 
 -------------------------------------------------------------------------------
-intoCSVRow p = parser =$= puller
+intoCSVRow :: (MonadThrow m, AttoparsecInput i)
+           => Parser i (Maybe o) -> GLInfConduit i m o
+intoCSVRow p = conduitParser p >+> puller
   where
-    parser = sequenceSink () seqSink
-    seqSink _ = do
-      p <- sinkParser p
-      return $ Emit () [p]
     puller = do
-      inc <- await
-      case inc of
-        Nothing -> return ()
-        Just i ->
-          case i of
-            Just i' -> yield i' >> puller
+      emrow <- awaitE
+      case emrow of
+        Left ures -> return ures
+        Right (_, mrow) ->
+          case mrow of
+            Just row -> yield row >> puller
             Nothing -> puller
 
 
@@ -199,28 +187,34 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 
 
 -------------------------------------------------------------------------------
-intoCSVMap set = intoCSV set =$= converter
+intoCSVMap :: (Ord a, MonadResource m, CSV s [a])
+           => CSVSettings -> GLInfConduit s m (MapRow a)
+intoCSVMap set = intoCSV set >+> (headers >>= converter)
   where
-    converter = conduitState Nothing push close
-      where
-        push Nothing row =
-          case row of
-            [] -> return $ StateProducing Nothing []
-            xs -> return $ StateProducing (Just xs) []
-        push st@(Just hs) row = return $ StateProducing st [toMapCSV hs row]
-        toMapCSV !headers !fs = M.fromList $ zip headers fs
-        close _ = return []
+    headers = do
+      mrow <- await
+      case mrow of
+        Nothing -> return []
+        Just [] -> headers
+        Just hs -> return hs
+    converter hs = do
+      erow <- awaitE
+      case erow of
+        Left ures -> return ures
+        Right row -> yield (toMapCSV hs row) >> converter hs
+    toMapCSV !hs !fs = M.fromList $ zip hs fs
 
 
 -------------------------------------------------------------------------------
+fromCSVMap :: (Monad m, IsString s, CSV s [a])
+           => CSVSettings -> GInfConduit (M.Map k a) m s
 fromCSVMap set = do
-  r <- C.await
-  case r of
-    Nothing -> return ()
-    Just r' -> push r' >> fromCSVMap set
-
+  erow <- awaitE
+  case erow of
+    Left ures -> return ures
+    Right row -> push row >> fromCSVMap set
   where
-    push r = mapM_ C.yield [rowToStr set (M.elems r), "\n"]
+    push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
 
 
 -------------------------------------------------------------------------------
@@ -231,12 +225,15 @@ fromCSVMap set = do
 writeHeaders
     :: (MonadResource m, CSV s (Row r), IsString s)
     => CSVSettings
-    -> Conduit (MapRow r) m s
+    -> GConduit (MapRow r) m s
 writeHeaders set = do
-  r <- C.await
-  case r of
+  mrow <- await
+  case mrow of
     Nothing -> return ()
-    Just r' -> mapM_ yield [rowToStr set (M.keys r'), "\n", rowToStr set (M.elems r'), "\n"]
+    Just row -> mapM_ yield [ rowToStr set (M.keys row)
+                            , "\n"
+                            , rowToStr set (M.elems row)
+                            , "\n" ]
 
 
                           ---------------------------
@@ -308,21 +305,3 @@ transformCSV set source c sink =
     c $=
     fromCSV set $$
     sink
-
-
-                               -----------------
-                               -- Simple Test --
-                               -----------------
-
-
-
-test :: IO ()
-test = runResourceT $
-  sourceFile "test/BigFile.csv" $=
-  decode utf8 $=
-  (intoCSV defCSVSettings
-    :: forall m. MonadResource m => Conduit Text m (MapRow Text)) $=
-  C.map (id :: MapRow Text -> MapRow Text) $=
-  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $=
-  encode utf8 $$
-  sinkFile "test/BigFileOut.csv"
