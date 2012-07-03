@@ -55,9 +55,9 @@ Description:
 
 extra-source-files:
   README.markdown
-  test/csv-enumerator-test.cabal
   test/test.csv
   test/Test.hs
+  test/Bench.hs
 
 library
   exposed-modules:
@@ -66,7 +66,7 @@ library
       Data.CSV.Conduit.Parser.Text
   other-modules:
       Data.CSV.Conduit.Types
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   hs-source-dirs: src
   build-depends:
       attoparsec >= 0.10
@@ -82,7 +82,7 @@ library
 test-suite test
   type: exitcode-stdio-1.0
   main-is: Test.hs
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   hs-source-dirs: test
   build-depends:
       base >= 4 && < 5
@@ -105,7 +105,7 @@ executable bench
     buildable: True
   else
     buildable: False
-  ghc-options: -Wall -Werror
+  ghc-options: -Wall
   hs-source-dirs: test
   build-depends:
       base >= 4 && < 5
