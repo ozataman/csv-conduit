@@ -12,7 +12,10 @@ module Data.CSV.Conduit
     -- * Key Operations
       CSV (..)
     , writeHeaders
+
+    -- * Convenience Functions
     , readCSVFile
+    , writeCSVFile
     , transformCSV
     , mapCSVFile
 
@@ -34,13 +37,14 @@ import qualified Data.ByteString.Char8              as B8
 import           Data.ByteString.Internal           (c2w)
 import           Data.Conduit
 import           Data.Conduit.Attoparsec
-import           Data.Conduit.Binary                (sinkFile, sourceFile)
+import           Data.Conduit.Binary                (sinkFile, sinkIOHandle, sourceFile)
 import qualified Data.Conduit.List                  as C
 import qualified Data.Map                           as M
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
+import           System.IO
 -------------------------------------------------------------------------------
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
@@ -221,7 +225,7 @@ fromCSVMap set = do
 -- | Write headers AND the row into the output stream, once. Just
 -- chain this using the 'Monad' instance in your pipeline:
 --
--- > ... =$= writeHeaders settings >> fromCSV settings( $$ sinkFile "..."
+-- > ... =$= writeHeaders settings >> fromCSV settings $$ sinkFile "..."
 writeHeaders
     :: (MonadResource m, CSV s (Row r), IsString s)
     => CSVSettings
@@ -247,12 +251,33 @@ writeHeaders set = do
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
 readCSVFile
-    :: (MonadResource m, CSV ByteString a)
+    :: (CSV ByteString a)
+    -- ^ A CSV type that can be obtained from ByteString stream
     => CSVSettings
+    -- ^ Settings to use in deciphering stream
     -> FilePath
     -- ^ Input file
-    -> m [a]
-readCSVFile set fp = sourceFile fp $= intoCSV set $$ C.consume
+    -> IO [a]
+readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
+
+
+
+-------------------------------------------------------------------------------
+-- | Write CSV data into file.
+writeCSVFile
+  :: (CSV ByteString a) 
+  => CSVSettings 
+  -- ^ CSV Settings
+  -> FilePath 
+  -- ^ Target file
+  -> IOMode 
+  -- ^ Write vs. append mode
+  -> [a] 
+  -- ^ List of rows
+  -> IO ()
+writeCSVFile set fo fmode rows = runResourceT $ do
+  C.sourceList rows $= fromCSV set $$
+    sinkIOHandle (openFile fo fmode)
 
 
 -------------------------------------------------------------------------------
@@ -305,3 +330,4 @@ transformCSV set source c sink =
     c $=
     fromCSV set $$
     sink
+
