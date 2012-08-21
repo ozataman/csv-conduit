@@ -2,3 +2,6 @@
 *.hi
 dist/
 cabal-dev/
+.DS*
+TAGS
+
