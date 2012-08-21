@@ -59,40 +59,36 @@ import           Data.CSV.Conduit.Types
 --
 -- Example #1: Basics Using Convenience API
 --
--- @
--- import Data.Conduit
--- import Data.Conduit.Binary
--- import Data.Conduit.List as CL
--- import Data.CSV.Conduit
---
--- myProcessor :: Conduit (Row Text) m (Row Text)
--- myProcessor = CL.map reverse
---
--- test = runResourceT $
---   transformCSV defCSVSettings
---                (sourceFile "input.csv")
---                myProcessor
---                (sinkFile "output.csv")
--- @
+-- >import Data.Conduit
+-- >import Data.Conduit.Binary
+-- >import Data.Conduit.List as CL
+-- >import Data.CSV.Conduit
+-- >
+-- >myProcessor :: Conduit (Row Text) m (Row Text)
+-- >myProcessor = CL.map reverse
+-- >
+-- >test = runResourceT $
+-- >  transformCSV defCSVSettings
+-- >               (sourceFile "input.csv")
+-- >               myProcessor
+-- >               (sinkFile "output.csv")
 --
 --
 -- Example #2: Basics Using Conduit API
 --
--- @
--- import Data.Conduit
--- import Data.Conduit.Binary
--- import Data.CSV.Conduit
---
--- myProcessor :: Conduit (MapRow Text) m (MapRow Text)
--- myProcessor = undefined
---
--- test = runResourceT $
---   sourceFile "test/BigFile.csv" $=
---   intoCSV defCSVSettings $=
---   myProcessor $=
---   (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $$
---   sinkFile "test/BigFileOut.csv"
--- @
+-- >import Data.Conduit
+-- >import Data.Conduit.Binary
+-- >import Data.CSV.Conduit
+-- >
+-- >myProcessor :: Conduit (MapRow Text) m (MapRow Text)
+-- >myProcessor = undefined
+-- >
+-- >test = runResourceT $
+-- >  sourceFile "test/BigFile.csv" $=
+-- >  intoCSV defCSVSettings $=
+-- >  myProcessor $=
+-- >  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $$
+-- >  sinkFile "test/BigFileOut.csv"
 class CSV s r where
 
   -----------------------------------------------------------------------------
