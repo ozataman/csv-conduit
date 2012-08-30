@@ -248,7 +248,6 @@ writeHeaders set = do
 -- feeding it all the arguments.
 readCSVFile
     :: (CSV ByteString a)
-    -- ^ A CSV type that can be obtained from ByteString stream
     => CSVSettings
     -- ^ Settings to use in deciphering stream
     -> FilePath
