@@ -37,7 +37,8 @@ import qualified Data.ByteString.Char8              as B8
 import           Data.ByteString.Internal           (c2w)
 import           Data.Conduit
 import           Data.Conduit.Attoparsec
-import           Data.Conduit.Binary                (sinkFile, sinkIOHandle, sourceFile)
+import           Data.Conduit.Binary                (sinkFile, sinkIOHandle,
+                                                     sourceFile)
 import qualified Data.Conduit.List                  as C
 import qualified Data.Map                           as M
 import           Data.String
@@ -164,9 +165,10 @@ fromCSVRow set = do
 -------------------------------------------------------------------------------
 intoCSVRow :: (MonadThrow m, AttoparsecInput i)
            => Parser i (Maybe o) -> GLInfConduit i m o
-intoCSVRow p = conduitParser p >+> puller
+intoCSVRow p = parse >+> puller
   where
-    puller = do
+    parse = {-# SCC "conduitParser_p" #-} conduitParser p
+    puller = {-# SCC "puller" #-} do
       emrow <- awaitE
       case emrow of
         Left ures -> return ures
@@ -260,14 +262,14 @@ readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
 -------------------------------------------------------------------------------
 -- | Write CSV data into file.
 writeCSVFile
-  :: (CSV ByteString a) 
-  => CSVSettings 
+  :: (CSV ByteString a)
+  => CSVSettings
   -- ^ CSV Settings
-  -> FilePath 
+  -> FilePath
   -- ^ Target file
-  -> IOMode 
+  -> IOMode
   -- ^ Write vs. append mode
-  -> [a] 
+  -> [a]
   -- ^ List of rows
   -> IO ()
 writeCSVFile set fo fmode rows = runResourceT $ do

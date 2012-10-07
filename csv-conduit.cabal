@@ -70,7 +70,7 @@ library
   hs-source-dirs: src
   build-depends:
       attoparsec >= 0.10
-    , attoparsec-conduit
+    , attoparsec-conduit >= 0.5.0.2
     , base >= 4 && < 5
     , bytestring
     , conduit == 0.5.*
@@ -78,6 +78,7 @@ library
     , monad-control
     , text
   ghc-options: -funbox-strict-fields
+  ghc-prof-options: -fprof-auto
 
 test-suite test
   type: exitcode-stdio-1.0

@@ -4,4 +4,9 @@ dist/
 cabal-dev/
 .DS*
 TAGS
-
+*.prof
+*.hi
+*.o
+*.ps
+*.aux
+*.hp
