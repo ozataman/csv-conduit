@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
@@ -39,8 +40,7 @@ test_identityMap = do
 
 test_simpleParse :: IO ()
 test_simpleParse = do
-  (d :: [MapRow B.ByteString]) <- runResourceT
-                                $ readCSVFile csvSettings testFile
+  (d :: [MapRow B.ByteString]) <- readCSVFile csvSettings testFile
   mapM_ assertRow d
   where
     assertRow r = v3 @=? (v1 + v2)
