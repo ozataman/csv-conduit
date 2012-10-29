@@ -118,7 +118,7 @@ instance CSV ByteString (Row ByteString) where
     let
       sep = B.pack [c2w (csvOutputColSep s)]
       wrapField !f = case csvOutputQuoteChar s of
-        Just !x -> x `B8.cons` escape x f `B8.snoc` x
+        Just !x -> (x `B8.cons` escape x f) `B8.snoc` x
         _ -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
