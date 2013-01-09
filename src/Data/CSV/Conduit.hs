@@ -153,6 +153,17 @@ instance CSV ByteString (Row Text) where
 
 
 -------------------------------------------------------------------------------
+-- | 'Row' instance using 'String' based on 'ByteString' stream.
+-- Please note this uses the ByteString operations underneath and has
+-- lots of unnecessary overhead. Included for convenience.
+instance CSV ByteString (Row String) where
+    rowToStr s r = rowToStr s $ map B8.pack r
+    intoCSV set = intoCSV set >+> C.map (map B8.unpack)
+    fromCSV set = C.map (map B8.pack) >+> fromCSV set
+
+
+
+-------------------------------------------------------------------------------
 fromCSVRow :: (Monad m, IsString s, CSV s r)
            => CSVSettings -> GInfConduit r m s
 fromCSVRow set = do
