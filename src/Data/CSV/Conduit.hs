@@ -236,7 +236,7 @@ fromCSVMap set = do
 --
 -- > ... =$= writeHeaders settings >> fromCSV settings $$ sinkFile "..."
 writeHeaders
-    :: (MonadResource m, CSV s (Row r), IsString s)
+    :: (Monad m, CSV s (Row r), IsString s)
     => CSVSettings
     -> GConduit (MapRow r) m s
 writeHeaders set = do
@@ -295,7 +295,7 @@ writeCSVFile set fo fmode rows = runResourceT $ do
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
 mapCSVFile
-    :: (MonadResource m, CSV ByteString a, CSV ByteString b)
+    :: (MonadResource m, MonadThrow m, CSV ByteString a, CSV ByteString b)
     => CSVSettings
     -- ^ Settings to use both for input and output
     -> (a -> [b])
@@ -322,7 +322,7 @@ mapCSVFile set f fi fo =
 --
 -- > transformCSV set (sourceFile inFile) (C.map f) (sinkFile outFile)
 transformCSV
-    :: (MonadResource m, CSV s a, CSV s' b)
+    :: (MonadThrow m, CSV s a, CSV s' b)
     => CSVSettings
     -- ^ Settings to be used for input and output
     -> Source m s
