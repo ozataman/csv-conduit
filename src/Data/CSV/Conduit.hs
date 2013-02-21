@@ -99,13 +99,13 @@ class CSV s r where
   -----------------------------------------------------------------------------
   -- | Turn a stream of 's' into a stream of CSV row type. An example
   -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
-  intoCSV :: MonadResource m => CSVSettings -> GLInfConduit s m r
+  intoCSV :: (MonadThrow m) => CSVSettings -> GLInfConduit s m r
 
   -----------------------------------------------------------------------------
   -- | Turn a stream of CSV row type back into a stream of 's'. An
   -- example would be rendering a stream of 'Row' 'ByteString' rows as
   -- 'Text'.
-  fromCSV :: MonadResource m => CSVSettings -> GInfConduit r m s
+  fromCSV :: Monad m => CSVSettings -> GInfConduit r m s
 
 
 
@@ -200,7 +200,7 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 
 
 -------------------------------------------------------------------------------
-intoCSVMap :: (Ord a, MonadResource m, CSV s [a])
+intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
            => CSVSettings -> GLInfConduit s m (MapRow a)
 intoCSVMap set = intoCSV set >+> (headers >>= converter)
   where
