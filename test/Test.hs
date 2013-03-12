@@ -54,8 +54,7 @@ test_simpleParse = do
 
 
 csvSettings :: CSVSettings
-csvSettings = defCSVSettings { csvQuoteChar = Just '`'
-                             , csvOutputQuoteChar = Just '`' }
+csvSettings = defCSVSettings { csvQuoteChar = Just '`'}
 
 testFile1, testFile2 :: FilePath
 testFile1 = "test/test.csv"
