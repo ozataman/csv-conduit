@@ -6,24 +6,38 @@ CSV files are the de-facto standard in many cases of data transfer,
 particularly when dealing with enterprise application or disparate database
 systems.
 
-While there are a number of csv libraries in Haskell, at the time of this
-project's start in 2010, there wasn't one that provided all of the following:
+While there are a number of csv libraries in Haskell, at the time of
+this project's start, there wasn't one that provided all of the
+following:
 
 * Full flexibility in quote characters, separators, input/output
 * Constant space operation
 * Robust parsing and error resiliency
+* Battle-tested reliability in real-world datasets
 * Fast operation
 * Convenient interface that supports a variety of use cases
 
-This library is an attempt to close these gaps.
+Over time, people created other plausible CSV packages like cassava.
+The major benefit from this library remains to be:
+
+* Direct participation in the conduit ecosystem, which is now quite
+  large, and all the benefits that come with it.
+* Flexibility in CSV format definition.
+* Resiliency to errors in the input data.
 
 
 ## This package
 
-csv-conduit is a conduits based CSV parsing library that is easy to
-use, flexible and fast. Furthermore, it provides ways to use
-constant-space during operation, which is absolutely critical in many
-real world use cases.
+csv-conduit is a conduit-based CSV parsing library that is easy to
+use, flexible and fast. It leverages the conduit infrastructure to
+provide constant-space operation, which is quite critical in many real
+world use cases.
+
+For example, you can use http-conduit to download a CSV file from the
+internet and plug its Source into intoCSV to stream-convert the
+download into the Row data type and do something with it as the data
+streams, that is without having to download the entire file to disk
+first.
 
 
 ## Author & Contributors
