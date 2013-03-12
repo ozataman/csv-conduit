@@ -243,9 +243,6 @@ writeHeaders set = do
 
 -------------------------------------------------------------------------------
 -- | Read the entire contents of a CSV file into memory.
---
--- An easy way to run this function would be 'runResourceT' after
--- feeding it all the arguments.
 readCSVFile
     :: (CSV ByteString a)
     => CSVSettings
@@ -254,7 +251,6 @@ readCSVFile
     -- ^ Input file
     -> IO [a]
 readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
-
 
 
 -------------------------------------------------------------------------------
