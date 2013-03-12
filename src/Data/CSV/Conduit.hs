@@ -99,13 +99,13 @@ class CSV s r where
   -----------------------------------------------------------------------------
   -- | Turn a stream of 's' into a stream of CSV row type. An example
   -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
-  intoCSV :: (MonadThrow m) => CSVSettings -> GLInfConduit s m r
+  intoCSV :: (MonadThrow m) => CSVSettings -> Conduit s m r
 
   -----------------------------------------------------------------------------
   -- | Turn a stream of CSV row type back into a stream of 's'. An
   -- example would be rendering a stream of 'Row' 'ByteString' rows as
   -- 'Text'.
-  fromCSV :: Monad m => CSVSettings -> GInfConduit r m s
+  fromCSV :: Monad m => CSVSettings -> Conduit r m s
 
 
 
@@ -147,8 +147,8 @@ instance CSV Text (Row Text) where
 -- | 'Row' instance using 'Text' based on 'ByteString' stream
 instance CSV ByteString (Row Text) where
     rowToStr s r = T.encodeUtf8 $ rowToStr s r
-    intoCSV set = intoCSV set >+> C.map (map T.decodeUtf8)
-    fromCSV set = fromCSV set >+> C.map T.encodeUtf8
+    intoCSV set = intoCSV set =$= C.map (map T.decodeUtf8)
+    fromCSV set = fromCSV set =$= C.map T.encodeUtf8
 
 
 
@@ -158,35 +158,29 @@ instance CSV ByteString (Row Text) where
 -- lots of unnecessary overhead. Included for convenience.
 instance CSV ByteString (Row String) where
     rowToStr s r = rowToStr s $ map B8.pack r
-    intoCSV set = intoCSV set >+> C.map (map B8.unpack)
-    fromCSV set = C.map (map B8.pack) >+> fromCSV set
+    intoCSV set = intoCSV set =$= C.map (map B8.unpack)
+    fromCSV set = C.map (map B8.pack) =$= fromCSV set
 
 
 
 -------------------------------------------------------------------------------
 fromCSVRow :: (Monad m, IsString s, CSV s r)
-           => CSVSettings -> GInfConduit r m s
+           => CSVSettings -> Conduit r m s
 fromCSVRow set = do
-  erow <- awaitE
-  case erow of
-    Left ures -> return ures
-    Right row -> mapM_ yield [rowToStr set row, "\n"] >> fromCSVRow set
+  awaitForever (\row -> mapM_ yield [rowToStr set row, "\n"] >> fromCSVRow set)
 
 
 -------------------------------------------------------------------------------
 intoCSVRow :: (MonadThrow m, AttoparsecInput i)
-           => Parser i (Maybe o) -> GLInfConduit i m o
-intoCSVRow p = parse >+> puller
+           => Parser i (Maybe o) -> Conduit i m o
+intoCSVRow p = parse =$= puller
   where
     parse = {-# SCC "conduitParser_p" #-} conduitParser p
     puller = {-# SCC "puller" #-} do
-      emrow <- awaitE
-      case emrow of
-        Left ures -> return ures
-        Right (_, mrow) ->
-          case mrow of
-            Just row -> yield row >> puller
-            Nothing -> puller
+      awaitForever (\(_, mrow) ->
+                     case mrow of
+                       Just row -> yield row >> puller
+                       Nothing -> puller)
 
 
 
@@ -201,8 +195,8 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
 
 -------------------------------------------------------------------------------
 intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
-           => CSVSettings -> GLInfConduit s m (MapRow a)
-intoCSVMap set = intoCSV set >+> (headers >>= converter)
+           => CSVSettings -> Conduit s m (MapRow a)
+intoCSVMap set = intoCSV set =$= (headers >>= converter)
   where
     headers = do
       mrow <- await
@@ -211,21 +205,15 @@ intoCSVMap set = intoCSV set >+> (headers >>= converter)
         Just [] -> headers
         Just hs -> return hs
     converter hs = do
-      erow <- awaitE
-      case erow of
-        Left ures -> return ures
-        Right row -> yield (toMapCSV hs row) >> converter hs
+      awaitForever (\row -> yield (toMapCSV hs row) >> converter hs)
     toMapCSV !hs !fs = M.fromList $ zip hs fs
 
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
-           => CSVSettings -> GInfConduit (M.Map k a) m s
+           => CSVSettings -> Conduit (M.Map k a) m s
 fromCSVMap set = do
-  erow <- awaitE
-  case erow of
-    Left ures -> return ures
-    Right row -> push row >> fromCSVMap set
+  awaitForever (\row -> push row >> fromCSVMap set)
   where
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
 
@@ -238,7 +226,7 @@ fromCSVMap set = do
 writeHeaders
     :: (Monad m, CSV s (Row r), IsString s)
     => CSVSettings
-    -> GConduit (MapRow r) m s
+    -> Conduit (MapRow r) m s
 writeHeaders set = do
   mrow <- await
   case mrow of
