@@ -26,6 +26,17 @@ constant-space during operation, which is absolutely critical in many
 real world use cases.
 
 
+## Author & Contributors
+
+Ozgun Ataman (@ozataman)
+Daniel Bergey (@bergey)
+BJTerry (@BJTerry)
+Dmitry Dzhus (@dzhus)
+Mike Craig (@mkscrg)
+Daniel Corson (@dancor)
+Niklas Hambüchen (@nh2)
+
+
 ### Introduction
 
 * The CSVeable typeclass implements the key operations.
