@@ -116,8 +116,8 @@ class CSV s r where
 instance CSV ByteString (Row ByteString) where
   rowToStr s !r =
     let
-      sep = B.pack [c2w (csvOutputColSep s)]
-      wrapField !f = case csvOutputQuoteChar s of
+      sep = B.pack [c2w (csvSep s)]
+      wrapField !f = case csvQuoteChar s of
         Just !x -> (x `B8.cons` escape x f) `B8.snoc` x
         _ -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
@@ -132,8 +132,8 @@ instance CSV ByteString (Row ByteString) where
 instance CSV Text (Row Text) where
   rowToStr s !r =
     let
-      sep = T.pack [csvOutputColSep s]
-      wrapField !f = case csvOutputQuoteChar s of
+      sep = T.pack [csvSep s]
+      wrapField !f = case csvQuoteChar s of
         Just !x -> x `T.cons` escape x f `T.snoc` x
         _ -> f
       escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
@@ -297,7 +297,7 @@ writeCSVFile set fo fmode rows = runResourceT $ do
 mapCSVFile
     :: (MonadResource m, MonadThrow m, CSV ByteString a, CSV ByteString b)
     => CSVSettings
-    -- ^ Settings to use both for input and output
+    -- ^ Settings to use both for both input and output
     -> (a -> [b])
     -- ^ A mapping function
     -> FilePath
@@ -324,7 +324,7 @@ mapCSVFile set f fi fo =
 transformCSV
     :: (MonadThrow m, CSV s a, CSV s' b)
     => CSVSettings
-    -- ^ Settings to be used for input and output
+    -- ^ Settings to be used for both input and output
     -> Source m s
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
     -> Conduit a m b
