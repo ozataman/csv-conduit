@@ -28,13 +28,13 @@ real world use cases.
 
 ## Author & Contributors
 
-Ozgun Ataman (@ozataman)
-Daniel Bergey (@bergey)
-BJTerry (@BJTerry)
-Dmitry Dzhus (@dzhus)
-Mike Craig (@mkscrg)
-Daniel Corson (@dancor)
-Niklas Hambüchen (@nh2)
+- Ozgun Ataman (@ozataman)
+- Daniel Bergey (@bergey)
+- BJTerry (@BJTerry)
+- Dmitry Dzhus (@dzhus)
+- Mike Craig (@mkscrg)
+- Daniel Corson (@dancor)
+- Niklas Hambüchen (@nh2)
 
 
 ### Introduction
