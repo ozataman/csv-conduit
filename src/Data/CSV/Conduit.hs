@@ -166,9 +166,7 @@ instance CSV ByteString (Row String) where
 -------------------------------------------------------------------------------
 fromCSVRow :: (Monad m, IsString s, CSV s r)
            => CSVSettings -> Conduit r m s
-fromCSVRow set = awaitForever $ \row -> do
-    mapM_ yield [rowToStr set row, "\n"]
-    fromCSVRow set
+fromCSVRow set = awaitForever $ \row -> mapM_ yield [rowToStr set row, "\n"]
 
 
 -------------------------------------------------------------------------------
@@ -178,11 +176,7 @@ intoCSVRow p = parse =$= puller
   where
     parse = {-# SCC "conduitParser_p" #-} conduitParser p
     puller = {-# SCC "puller" #-}
-      awaitForever $ \ (_, mrow) ->
-          case mrow of
-            Just row -> yield row >> puller
-            Nothing -> puller
-
+      awaitForever $ \ (_, mrow) -> maybe (return ()) yield mrow
 
 
 -------------------------------------------------------------------------------
@@ -205,14 +199,14 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
         Nothing -> return []
         Just [] -> headers
         Just hs -> return hs
-    converter hs = awaitForever $ \row -> yield (toMapCSV hs row) >> converter hs
+    converter hs = awaitForever $ yield . toMapCSV hs
     toMapCSV !hs !fs = M.fromList $ zip hs fs
 
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
            => CSVSettings -> Conduit (M.Map k a) m s
-fromCSVMap set = awaitForever $ \row -> push row >> fromCSVMap set
+fromCSVMap set = awaitForever push
   where
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
 
