@@ -248,8 +248,11 @@ fromCSVMap set = awaitForever push
 
 
 -------------------------------------------------------------------------------
--- | Write headers AND the row into the output stream, once. Just
--- chain this using the 'Monad' instance in your pipeline:
+-- | Write headers AND the row into the output stream, once. If you
+-- don't call this while using 'MapRow' family of row types, then your
+-- resulting output will NOT have any headers in it.
+--
+-- Usage: Just chain this using the 'Monad' instance in your pipeline:
 --
 -- > ... =$= writeHeaders settings >> fromCSV settings $$ sinkFile "..."
 writeHeaders
