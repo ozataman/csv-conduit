@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE TypeSynonymInstances  #-}
+{-# LANGUAGE UndecidableInstances  #-}
 
 module Data.CSV.Conduit
     (
@@ -45,8 +46,12 @@ import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
+import qualified Data.Vector                        as V
 import           System.IO
 -------------------------------------------------------------------------------
+import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
+                                                     ToNamedRecord (..),
+                                                     runParser)
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
 import           Data.CSV.Conduit.Types
@@ -55,7 +60,18 @@ import           Data.CSV.Conduit.Types
 
 -------------------------------------------------------------------------------
 -- | Represents types 'r' that are CSV-like and can be converted
--- to/from an underlying stream of type 's'.
+-- to/from an underlying stream of type 's'. There is nothing scary
+-- about the type:
+--
+-- @s@ represents stream types that can be converted to\/from CSV rows.
+-- Examples are 'ByteString', 'Text' and 'String'.
+--
+-- @r@ represents the target CSV row representations that this library
+-- can work with. Examples are the 'Row' types, the 'Record' type and
+-- the 'MapRow' family of types. We can also convert directly to
+-- complex Haskell types using the 'Data.CSV.Conduit.Conversion'
+-- module that was borrowed from the cassava package, which was itself
+-- inspired by the aeson package.
 --
 --
 -- Example #1: Basics Using Convenience API
@@ -162,6 +178,12 @@ instance CSV ByteString (Row String) where
     fromCSV set = C.map (map B8.pack) =$= fromCSV set
 
 
+-- | Support for parsing rows in the 'Record' form
+instance (CSV s (Row ByteString)) => CSV s Record where
+    rowToStr s r = rowToStr s . V.toList $ r
+    intoCSV set = intoCSV set =$= C.map (V.fromList)
+    fromCSV set = C.map (V.toList) =$= fromCSV set
+
 
 -------------------------------------------------------------------------------
 fromCSVRow :: (Monad m, IsString s, CSV s r)
@@ -201,6 +223,20 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
         Just hs -> return hs
     converter hs = awaitForever $ yield . toMapCSV hs
     toMapCSV !hs !fs = M.fromList $ zip hs fs
+
+
+-- | Conversion of stream directly to/from a custom complex haskell
+-- type.
+instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) => CSV s (Custom a) where
+    rowToStr s a = rowToStr s . toNamedRecord . getCustom $ a
+    intoCSV set = intoCSV set =$= C.mapMaybe go
+        where
+          go x = either (const Nothing) (Just . Custom) $
+                 runParser (parseNamedRecord x)
+
+    fromCSV set = C.map go =$= fromCSV set
+        where
+          go = toNamedRecord . getCustom
 
 
 -------------------------------------------------------------------------------

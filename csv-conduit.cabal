@@ -1,5 +1,5 @@
 Name:                csv-conduit
-Version:             0.5.1
+Version:             0.6.0
 Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.
 Homepage:            http://github.com/ozataman/csv-conduit
 License:             BSD3
@@ -63,11 +63,13 @@ extra-source-files:
 library
   exposed-modules:
       Data.CSV.Conduit
+      Data.CSV.Conduit.Types
+      Data.CSV.Conduit.Conversion
       Data.CSV.Conduit.Parser.ByteString
       Data.CSV.Conduit.Parser.Text
   other-modules:
-      Data.CSV.Conduit.Types
-  ghc-options: -Wall
+      Data.CSV.Conduit.Conversion.Internal
+  ghc-options: -Wall -funbox-strict-fields
   hs-source-dirs: src
   build-depends:
       attoparsec >= 0.10
@@ -79,8 +81,16 @@ library
     , monad-control
     , text
     , data-default
-  ghc-options: -funbox-strict-fields
+    , vector
+    , array 
+    , blaze-builder
+    , unordered-containers
   ghc-prof-options: -fprof-auto
+
+  if impl(ghc >= 7.2.1)
+    cpp-options: -DGENERICS
+    build-depends: ghc-prim >= 0.2 && < 0.4
+
 
 test-suite test
   type: exitcode-stdio-1.0
