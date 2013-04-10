@@ -26,6 +26,11 @@ module Data.CSV.Conduit
     , MapRow
     , Row
 
+
+    , Record
+    , NamedRecord
+    , Field
+
     -- * Re-exported For Convenience
     , runResourceT
     ) where
