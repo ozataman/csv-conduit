@@ -187,8 +187,8 @@ instance CSV ByteString (Row String) where
     fromCSV set = C.map (map B8.pack) =$= fromCSV set
 
 
--- | Support for parsing rows in the 'Vector' form
-instance (CSV s (Row ByteString)) => CSV s (V.Vector ByteString) where
+-- | Support for parsing rows in the 'Vector' form.
+instance (CSV s (Row s)) => CSV s (V.Vector s) where
     rowToStr s r = rowToStr s . V.toList $ r
     intoCSV set = intoCSV set =$= C.map (V.fromList)
     fromCSV set = C.map (V.toList) =$= fromCSV set
