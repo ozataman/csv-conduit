@@ -9,6 +9,10 @@ module Data.CSV.Conduit.Conversion
     (
     -- * Type conversion
       Only(..)
+    , Custom (..)
+    , NamedCustom (..)
+    , Record
+    , NamedRecord
     , FromRecord(..)
     , FromNamedRecord(..)
     , ToNamedRecord(..)
@@ -81,6 +85,49 @@ fromStrict = L.fromChunks . (:[])
 
 ------------------------------------------------------------------------
 -- Type conversion
+
+
+
+-- | A shorthand for the ByteString case of 'MapRow'
+type NamedRecord = M.Map B8.ByteString B8.ByteString
+
+
+-- | A wrapper around custom haskell types that can directly be
+-- converted/parsed from an incoming CSV stream.
+--
+-- We define this wrapper to stop GHC from complaining
+-- about overlapping instances. Just use 'getNamedCustom' to get your
+-- object out of the wrapper.
+newtype NamedCustom a = NamedCustom { getNamedCustom :: a } deriving (Eq,Show,Read,Ord)
+
+
+-- | A wrapper around custom haskell types that can directly be
+-- converted/parsed from an incoming CSV stream.
+--
+-- We define this wrapper to stop GHC from complaining
+-- about overlapping instances. Just use 'getCustom' to get your
+-- object out of the wrapper.
+newtype Custom a = Custom { getCustom :: a } deriving (Eq,Show,Read,Ord)
+
+
+-- | CSV data represented as a Haskell vector of vector of
+-- bytestrings.
+type Csv = Vector Record
+
+-- | A record corresponds to a single line in a CSV file.
+type Record = Vector Field
+
+-- | The header corresponds to the first line a CSV file. Not all CSV
+-- files have a header.
+type Header = Vector Name
+
+-- | A header has one or more names, describing the data in the column
+-- following the name.
+type Name = B8.ByteString
+
+-- | A single field within a record.
+type Field = B8.ByteString
+
 
 ------------------------------------------------------------------------
 -- Index-based conversion

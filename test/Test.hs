@@ -6,6 +6,7 @@ module Main where
 import qualified Data.ByteString.Char8          as B
 import           Data.Map                       ((!))
 import           Data.Text
+import qualified Data.Vector                    as V
 import           System.Directory
 import           Test.Framework                 (Test, defaultMain, testGroup)
 import           Test.Framework.Providers.HUnit
@@ -44,8 +45,8 @@ test_identityMap = do
 
 test_simpleParse :: IO ()
 test_simpleParse = do
-  (d :: [MapRow B.ByteString]) <- readCSVFile csvSettings testFile1
-  mapM_ assertRow d
+  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings testFile1
+  V.mapM_ assertRow d
   where
     assertRow r = v3 @=? (v1 + v2)
       where v1 = readBS $ r ! "Col2"

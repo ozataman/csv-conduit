@@ -10,32 +10,32 @@
 module Data.CSV.Conduit
     (
 
-    -- * Key Operations
-      CSV (..)
-    , writeHeaders
-
-    -- * Convenience Functions
+    -- * Main Interface
+      decodeCSV
     , readCSVFile
     , writeCSVFile
     , transformCSV
     , mapCSVFile
+    , writeHeaders
 
-    -- * Important Types
+    -- Types
+    , CSV (..)
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
     , Row
-
-    , Record
-    , NamedRecord
-    , Field
-    , Custom (..)
 
     -- * Re-exported For Convenience
     , runResourceT
     ) where
 
 -------------------------------------------------------------------------------
+import           Control.Exception
+import           Control.Monad.Identity
+import           Control.Monad.Morph
+import           Control.Monad.Primitive
+import           Control.Monad.ST
+import           Control.Monad.Trans
 import           Data.Attoparsec.Types              (Parser)
 import qualified Data.ByteString                    as B
 import           Data.ByteString.Char8              (ByteString)
@@ -52,9 +52,13 @@ import           Data.Text                          (Text)
 import qualified Data.Text                          as T
 import qualified Data.Text.Encoding                 as T
 import qualified Data.Vector                        as V
+import qualified Data.Vector.Generic                as GV
+import qualified Data.Vector.Generic.Mutable        as GMV
 import           System.IO
 -------------------------------------------------------------------------------
-import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
+import           Data.CSV.Conduit.Conversion        (Custom (..),
+                                                     FromNamedRecord (..),
+                                                     NamedCustom (..),
                                                      ToNamedRecord (..),
                                                      runParser)
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
@@ -183,11 +187,12 @@ instance CSV ByteString (Row String) where
     fromCSV set = C.map (map B8.pack) =$= fromCSV set
 
 
--- | Support for parsing rows in the 'Record' form
-instance (CSV s (Row ByteString)) => CSV s Record where
+-- | Support for parsing rows in the 'Vector' form
+instance (CSV s (Row ByteString)) => CSV s (V.Vector ByteString) where
     rowToStr s r = rowToStr s . V.toList $ r
     intoCSV set = intoCSV set =$= C.map (V.fromList)
     fromCSV set = C.map (V.toList) =$= fromCSV set
+
 
 
 -------------------------------------------------------------------------------
@@ -196,9 +201,9 @@ fromCSVRow :: (Monad m, IsString s, CSV s r)
 fromCSVRow set = awaitForever $ \row -> mapM_ yield [rowToStr set row, "\n"]
 
 
+
 -------------------------------------------------------------------------------
-intoCSVRow :: (MonadThrow m, AttoparsecInput i)
-           => Parser i (Maybe o) -> Conduit i m o
+intoCSVRow :: (MonadThrow m, AttoparsecInput i) => Parser i (Maybe o) -> Conduit i m o
 intoCSVRow p = parse =$= puller
   where
     parse = {-# SCC "conduitParser_p" #-} conduitParser p
@@ -232,16 +237,16 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
 
 -- | Conversion of stream directly to/from a custom complex haskell
 -- type.
-instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) => CSV s (Custom a) where
-    rowToStr s a = rowToStr s . toNamedRecord . getCustom $ a
+instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) => CSV s (NamedCustom a) where
+    rowToStr s a = rowToStr s . toNamedRecord . getNamedCustom $ a
     intoCSV set = intoCSV set =$= C.mapMaybe go
         where
-          go x = either (const Nothing) (Just . Custom) $
+          go x = either (const Nothing) (Just . NamedCustom) $
                  runParser (parseNamedRecord x)
 
     fromCSV set = C.map go =$= fromCSV set
         where
-          go = toNamedRecord . getCustom
+          go = toNamedRecord . getNamedCustom
 
 
 -------------------------------------------------------------------------------
@@ -281,14 +286,36 @@ writeHeaders set = do
 
 -------------------------------------------------------------------------------
 -- | Read the entire contents of a CSV file into memory.
-readCSVFile
-    :: (CSV ByteString a)
+-- readCSVFile
+--     :: (GV.Vector v a, CSV ByteString a)
+--     => CSVSettings
+--     -- ^ Settings to use in deciphering stream
+--     -> FilePath
+--     -- ^ Input file
+--     -> IO (v a)
+readCSVFile :: (MonadIO m, CSV ByteString a) => CSVSettings -> FilePath -> m (V.Vector a)
+readCSVFile set fp = liftIO . runResourceT $ sourceFile fp $= intoCSV set $$ hoist lift (sinkVector 10)
+
+
+
+-------------------------------------------------------------------------------
+-- | A simple way to decode a CSV string. Don't be alarmed by the
+-- polymorphic nature of the signature. 's' is the type for the string
+-- and 'v' is a kind of 'Vector' here.
+--
+-- For example for 'ByteString':
+--
+-- >>> s <- LB.readFile "my.csv"
+-- >>> decodeCSV 'def' s :: Vector (Vector ByteString)
+--
+-- will just work.
+decodeCSV
+    :: (GV.Vector v a, CSV s a)
     => CSVSettings
-    -- ^ Settings to use in deciphering stream
-    -> FilePath
-    -- ^ Input file
-    -> IO [a]
-readCSVFile set fp = runResourceT $ sourceFile fp $= intoCSV set $$ C.consume
+    -> s
+    -> Either SomeException (v a)
+decodeCSV set bs = runST $ runExceptionT $ C.sourceList [bs] $= intoCSV set $$ hoist lift (sinkVector 10)
+
 
 
 -------------------------------------------------------------------------------
@@ -359,4 +386,35 @@ transformCSV set source c sink =
     c $=
     fromCSV set $$
     sink
+
+
+
+
+                              ------------------
+                              -- Vector Utils --
+                              ------------------
+
+
+
+-------------------------------------------------------------------------------
+-- | An efficient sink that incrementally grows a vector from the input stream
+sinkVector :: (PrimMonad m, GV.Vector v a) => Int -> ConduitM a o m (v a)
+sinkVector by = do
+    v <- lift $ GMV.new by
+    go 0 v
+  where
+    -- i is the index of the next element to be written by go
+    -- also exactly the number of elements in v so far
+    go i v = do
+        res <- await
+        case res of
+          Nothing -> do
+            v' <- lift $ GV.freeze $ GMV.slice 0 i v
+            return $! v'
+          Just x -> do
+            v' <- case GMV.length v == i of
+                    True -> lift $ GMV.grow v by
+                    False -> return v
+            lift $ GMV.write v' i x
+            go (i+1) v'
 
