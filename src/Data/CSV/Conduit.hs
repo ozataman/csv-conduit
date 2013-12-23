@@ -237,7 +237,8 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
 
 -- | Conversion of stream directly to/from a custom complex haskell
 -- type.
-instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) => CSV s (NamedCustom a) where
+instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) =>
+    CSV s (NamedCustom a) where
     rowToStr s a = rowToStr s . toNamedRecord . getNamedCustom $ a
     intoCSV set = intoCSV set =$= C.mapMaybe go
         where
