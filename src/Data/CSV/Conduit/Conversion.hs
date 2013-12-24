@@ -10,7 +10,7 @@ module Data.CSV.Conduit.Conversion
     -- * Type conversion
       Only(..)
     , Custom (..)
-    , NamedCustom (..)
+    , Named (..)
     , Record
     , NamedRecord
     , FromRecord(..)
@@ -96,9 +96,9 @@ type NamedRecord = M.Map B8.ByteString B8.ByteString
 -- converted/parsed from an incoming CSV stream.
 --
 -- We define this wrapper to stop GHC from complaining
--- about overlapping instances. Just use 'getNamedCustom' to get your
+-- about overlapping instances. Just use 'getNamed' to get your
 -- object out of the wrapper.
-newtype NamedCustom a = NamedCustom { getNamedCustom :: a } deriving (Eq,Show,Read,Ord)
+newtype Named a = Named { getNamed :: a } deriving (Eq,Show,Read,Ord)
 
 
 -- | A wrapper around custom haskell types that can directly be

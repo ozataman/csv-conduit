@@ -31,7 +31,7 @@ module Data.CSV.Conduit
 
 -------------------------------------------------------------------------------
 import           Control.Exception
-import           Control.Monad.Identity
+
 import           Control.Monad.Morph
 import           Control.Monad.Primitive
 import           Control.Monad.ST
@@ -58,7 +58,7 @@ import           System.IO
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Conversion        (Custom (..),
                                                      FromNamedRecord (..),
-                                                     NamedCustom (..),
+                                                     Named (..),
                                                      ToNamedRecord (..),
                                                      runParser)
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
@@ -238,16 +238,16 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
 -- | Conversion of stream directly to/from a custom complex haskell
 -- type.
 instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) =>
-    CSV s (NamedCustom a) where
-    rowToStr s a = rowToStr s . toNamedRecord . getNamedCustom $ a
+    CSV s (Named a) where
+    rowToStr s a = rowToStr s . toNamedRecord . getNamed $ a
     intoCSV set = intoCSV set =$= C.mapMaybe go
         where
-          go x = either (const Nothing) (Just . NamedCustom) $
+          go x = either (const Nothing) (Just . Named) $
                  runParser (parseNamedRecord x)
 
     fromCSV set = C.map go =$= fromCSV set
         where
-          go = toNamedRecord . getNamedCustom
+          go = toNamedRecord . getNamed
 
 
 -------------------------------------------------------------------------------
@@ -320,7 +320,8 @@ decodeCSV set bs = runST $ runExceptionT $ C.sourceList [bs] $= intoCSV set $$ h
 
 
 -------------------------------------------------------------------------------
--- | Write CSV data into file.
+-- | Write CSV data into file. As we use a 'ByteString' sink, you'll
+-- need to get your data into a 'ByteString' stream type.
 writeCSVFile
   :: (CSV ByteString a)
   => CSVSettings
