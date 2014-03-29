@@ -5,11 +5,27 @@
              MultiParamTypeClasses, UndecidableInstances, ScopedTypeVariables #-}
 #endif
 
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Data.CSV.Conduit.Conversion
+-- Copyright   :  Ozgun Ataman, Johan Tibell
+-- License     :  BSD3
+--
+-- Maintainer  :  Ozgun Ataman <ozataman@gmail.com>
+-- Stability   :  experimental
+--
+-- This module has been shamelessly taken from Johan Tibell's nicely
+-- put together cassava package, which itself borrows the approach
+-- from Bryan O'Sullivan's widely used aeson package.
+--
+-- We make the necessary adjustments and some simplifications here to
+-- bolt this parsing interface onto our underlying "CSV" typeclass.
+----------------------------------------------------------------------------
+
 module Data.CSV.Conduit.Conversion
     (
     -- * Type conversion
       Only(..)
-    , Custom (..)
     , Named (..)
     , Record
     , NamedRecord
@@ -44,7 +60,7 @@ import qualified Data.Attoparsec.Char8 as A8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
-import qualified Data.HashMap.Lazy as HM
+
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.Map as M
 import Data.Monoid (Monoid, mappend, mempty)
@@ -66,7 +82,7 @@ import qualified Data.IntMap as IM
 #endif
 
 import Data.CSV.Conduit.Conversion.Internal
-import Data.CSV.Conduit.Types
+
 
 ------------------------------------------------------------------------
 -- bytestring compatibility
@@ -100,30 +116,8 @@ type NamedRecord = M.Map B8.ByteString B8.ByteString
 -- object out of the wrapper.
 newtype Named a = Named { getNamed :: a } deriving (Eq,Show,Read,Ord)
 
-
--- | A wrapper around custom haskell types that can directly be
--- converted/parsed from an incoming CSV stream.
---
--- We define this wrapper to stop GHC from complaining
--- about overlapping instances. Just use 'getCustom' to get your
--- object out of the wrapper.
-newtype Custom a = Custom { getCustom :: a } deriving (Eq,Show,Read,Ord)
-
-
--- | CSV data represented as a Haskell vector of vector of
--- bytestrings.
-type Csv = Vector Record
-
 -- | A record corresponds to a single line in a CSV file.
-type Record = Vector Field
-
--- | The header corresponds to the first line a CSV file. Not all CSV
--- files have a header.
-type Header = Vector Name
-
--- | A header has one or more names, describing the data in the column
--- following the name.
-type Name = B8.ByteString
+type Record = Vector B8.ByteString
 
 -- | A single field within a record.
 type Field = B8.ByteString

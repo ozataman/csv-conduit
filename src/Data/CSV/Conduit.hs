@@ -56,8 +56,7 @@ import qualified Data.Vector.Generic                as GV
 import qualified Data.Vector.Generic.Mutable        as GMV
 import           System.IO
 -------------------------------------------------------------------------------
-import           Data.CSV.Conduit.Conversion        (Custom (..),
-                                                     FromNamedRecord (..),
+import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
                                                      Named (..),
                                                      ToNamedRecord (..),
                                                      runParser)
