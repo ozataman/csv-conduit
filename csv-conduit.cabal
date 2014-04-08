@@ -78,6 +78,7 @@ library
     , base >= 4 && < 5
     , bytestring
     , conduit >= 1.0 && < 2.0
+    , conduit-extra
     , containers >= 0.3
     , monad-control
     , text
@@ -90,6 +91,7 @@ library
     , mtl
     , mmorph
     , primitive
+    , resourcet
   ghc-prof-options: -fprof-auto
 
   if impl(ghc >= 7.2.1)

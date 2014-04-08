@@ -36,6 +36,9 @@ import           Control.Monad.Morph
 import           Control.Monad.Primitive
 import           Control.Monad.ST
 import           Control.Monad.Trans
+import           Control.Monad.Trans.Resource       (MonadResource, MonadThrow,
+                                                     runExceptionT,
+                                                     runResourceT)
 import           Data.Attoparsec.Types              (Parser)
 import qualified Data.ByteString                    as B
 import           Data.ByteString.Char8              (ByteString)
