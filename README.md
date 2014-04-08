@@ -1,4 +1,4 @@
-# README
+# README [![Build Status](https://travis-ci.org/ozataman/csv-conduit.svg?branch=master)](https://travis-ci.org/ozataman/csv-conduit)
 
 ## CSV Files and Haskell
 
