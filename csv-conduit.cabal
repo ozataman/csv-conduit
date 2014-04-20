@@ -55,7 +55,7 @@ Description:
 
 
 extra-source-files:
-  README.markdown
+  README.md
   test/test.csv
   test/Test.hs
   test/Bench.hs
