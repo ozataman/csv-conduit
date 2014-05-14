@@ -31,7 +31,6 @@ module Data.CSV.Conduit
 
 -------------------------------------------------------------------------------
 import           Control.Exception
-
 import           Control.Monad.Morph
 import           Control.Monad.Primitive
 import           Control.Monad.ST
