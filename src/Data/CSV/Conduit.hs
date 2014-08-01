@@ -48,6 +48,7 @@ import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary                (sinkFile, sinkIOHandle,
                                                      sourceFile)
 import qualified Data.Conduit.List                  as C
+import           Data.List                          (mapAccumL)
 import qualified Data.Map                           as M
 import           Data.String
 import           Data.Text                          (Text)
@@ -215,14 +216,14 @@ intoCSVRow p = parse =$= puller
 -------------------------------------------------------------------------------
 -- | Generic 'MapRow' instance; any stream type with a 'Row' instance
 -- automatically gets a 'MapRow' instance.
-instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
+instance (CSV s (Row s'), Ord s', IsString s, IsString s') => CSV s (MapRow s') where
   rowToStr s r = rowToStr s . M.elems $ r
   intoCSV set = intoCSVMap set
   fromCSV set = fromCSVMap set
 
 
 -------------------------------------------------------------------------------
-intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
+intoCSVMap :: (Ord a, MonadThrow m, CSV s [a], IsString a)
            => CSVSettings -> Conduit s m (MapRow a)
 intoCSVMap set = intoCSV set =$= (headers >>= converter)
   where
@@ -231,9 +232,16 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
       case mrow of
         Nothing -> return []
         Just [] -> headers
-        Just hs -> return hs
+        Just hs -> return $ fillUnnamed hs
     converter hs = awaitForever $ yield . toMapCSV hs
     toMapCSV !hs !fs = M.fromList $ zip hs fs
+
+
+fillUnnamed :: (Eq a, IsString a) => [a] -> [a]
+fillUnnamed = snd . mapAccumL f (1 :: Int)
+  where
+    f n "" = (n+1, fromString ("unnamed" ++ show n))
+    f n x  = (n, x)
 
 
 -- | Conversion of stream directly to/from a custom complex haskell
