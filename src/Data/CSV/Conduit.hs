@@ -15,6 +15,7 @@ module Data.CSV.Conduit
     , readCSVFile
     , writeCSVFile
     , transformCSV
+    , transformCSV'
     , mapCSVFile
     , writeHeaders
 
