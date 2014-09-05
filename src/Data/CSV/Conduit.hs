@@ -383,11 +383,39 @@ transformCSV
     -> Sink s' m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
-transformCSV set source c sink =
+transformCSV set = transformCSV' set set
+
+
+-------------------------------------------------------------------------------
+-- | General purpose CSV transformer. Apply a list-like processing
+-- function from 'Data.Conduit.List' to the rows of a CSV stream. You
+-- need to provide a stream data source, a transformer and a stream
+-- data sink.
+--
+-- An easy way to run this function would be 'runResourceT' after
+-- feeding it all the arguments.
+--
+-- Example - map a function over the rows of a CSV file:
+--
+-- > transformCSV setIn setOut (sourceFile inFile) (C.map f) (sinkFile outFile)
+transformCSV'
+    :: (MonadThrow m, CSV s a, CSV s' b)
+    => CSVSettings
+    -- ^ Settings to be used for input
+    -> CSVSettings
+    -- ^ Settings to be used for output
+    -> Source m s
+    -- ^ A raw stream data source. Ex: 'sourceFile inFile'
+    -> Conduit a m b
+    -- ^ A transforming conduit
+    -> Sink s' m ()
+    -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
+    -> m ()
+transformCSV' setIn setOut source c sink =
     source $=
-    intoCSV set $=
+    intoCSV setIn $=
     c $=
-    fromCSV set $$
+    fromCSV setOut $$
     sink
 
 
