@@ -67,6 +67,7 @@ library
       Data.CSV.Conduit.Conversion
       Data.CSV.Conduit.Parser.ByteString
       Data.CSV.Conduit.Parser.Text
+      Data.OMap
   other-modules:
       Data.CSV.Conduit.Conversion.Internal
       Data.CSV.Conduit.Monoid

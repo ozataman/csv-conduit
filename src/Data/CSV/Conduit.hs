@@ -18,6 +18,7 @@ module Data.CSV.Conduit
     , transformCSV'
     , mapCSVFile
     , writeHeaders
+    , writeHeadersO
 
     -- Types
     , CSV (..)
@@ -49,7 +50,9 @@ import           Data.Conduit.Attoparsec
 import           Data.Conduit.Binary                (sinkFile, sinkIOHandle,
                                                      sourceFile)
 import qualified Data.Conduit.List                  as C
+import           Data.List
 import qualified Data.Map                           as M
+import           Data.Ord
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
@@ -66,6 +69,7 @@ import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
 import           Data.CSV.Conduit.Types
+import           Data.OMap
 -------------------------------------------------------------------------------
 
 
@@ -178,6 +182,14 @@ instance CSV ByteString (Row Text) where
     fromCSV set = fromCSV set =$= C.map T.encodeUtf8
 
 
+-------------------------------------------------------------------------------
+-- | 'Row' instance using 'Text' based on 'ByteString' stream
+instance CSV ByteString (V.Vector Text) where
+    rowToStr s r = T.encodeUtf8 $ rowToStr s r
+    intoCSV set = intoCSV set =$= C.map (V.map T.decodeUtf8)
+    fromCSV set = fromCSV set =$= C.map T.encodeUtf8
+
+
 
 -------------------------------------------------------------------------------
 -- | 'Row' instance using 'String' based on 'ByteString' stream.
@@ -260,6 +272,38 @@ fromCSVMap set = awaitForever push
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
 
 
+instance (CSV s (Row s'), CSV s (V.Vector s'), Ord s', IsString s)
+    => CSV s (OMap s') where
+  rowToStr s r = rowToStr s $ omapVector r
+  intoCSV set = intoCsvOMap set
+  fromCSV set = fromCsvOMap set
+
+
+intoCsvOMap
+    :: (Ord a1, MonadThrow m, CSV a [a1])
+    => CSVSettings
+    -> ConduitM a (OMap a1) m ()
+intoCsvOMap set = intoCSV set =$= (headers >>= converter)
+  where
+    headers = do
+      mrow <- await
+      case mrow of
+        Nothing -> return []
+        Just [] -> headers
+        Just hs -> return hs
+    converter hs = awaitForever $ yield . toOMapCSV hs
+    toOMapCSV !hs !fs = OMap (M.fromList $ zip hs [0..]) (V.fromList fs)
+
+
+fromCsvOMap
+    :: (Monad m, IsString o, CSV o (Row a))
+    => CSVSettings
+    -> ConduitM (OMap a) o m ()
+fromCsvOMap set = awaitForever push
+  where
+    push r = mapM_ yield [rowToStr set (V.toList $ omapVector r), "\n"]
+
+
 -------------------------------------------------------------------------------
 -- | Write headers AND the row into the output stream, once. If you
 -- don't call this while using 'MapRow' family of row types, then your
@@ -280,6 +324,30 @@ writeHeaders set = do
                             , "\n"
                             , rowToStr set (M.elems row)
                             , "\n" ]
+
+
+-------------------------------------------------------------------------------
+-- | Write headers AND the row into the output stream, once. If you
+-- don't call this while using 'MapRow' family of row types, then your
+-- resulting output will NOT have any headers in it.
+--
+-- Usage: Just chain this using the 'Monad' instance in your pipeline:
+--
+-- > ... =$= writeHeadersO settings >> fromCSV settings $$ sinkFile "..."
+writeHeadersO
+    :: (Monad m, CSV s (Row r), IsString s)
+    => CSVSettings
+    -> Conduit (OMap r) m s
+writeHeadersO set = do
+  mrow <- await
+  case mrow of
+    Nothing -> return ()
+    Just row -> do
+        let hs = map fst $ sortBy (comparing snd) $ M.toList $ omapIndMap row
+        mapM_ yield [ rowToStr set hs
+                    , "\n"
+                    , rowToStr set (V.toList $ omapVector row)
+                    , "\n" ]
 
 
                           ---------------------------
