@@ -1,4 +1,4 @@
-{-| 
+{-|
 
   This module exports the underlying Attoparsec row parser. This is helpful if
   you want to do some ad-hoc CSV string parsing.
@@ -14,12 +14,12 @@ module Data.CSV.Conduit.Parser.ByteString
 
 -------------------------------------------------------------------------------
 import           Control.Applicative
-import           Control.Monad (mzero)
-import           Data.Attoparsec as P hiding (take)
-import qualified Data.Attoparsec.Char8 as C8
-import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.Char8 as B8
-import           Data.Word (Word8)
+import           Control.Monad                    (mzero)
+import           Data.Attoparsec.ByteString       as P hiding (take)
+import qualified Data.Attoparsec.ByteString.Char8 as C8
+import           Data.ByteString.Char8            (ByteString)
+import qualified Data.ByteString.Char8            as B8
+import           Data.Word                        (Word8)
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Types
 
@@ -60,11 +60,11 @@ row csvs = csvrow csvs <|> badrow
 
 
 badrow :: Parser (Maybe (Row ByteString))
-badrow = P.takeWhile (not . C8.isEndOfLine) *> 
+badrow = P.takeWhile (not . C8.isEndOfLine) *>
          (C8.endOfLine <|> C8.endOfInput) *> return Nothing
 
 csvrow :: CSVSettings -> Parser (Maybe (Row ByteString))
-csvrow c = 
+csvrow c =
   let rowbody = (quotedField' <|> field c) `sepBy` C8.char (csvSep c)
       properrow = rowbody <* (C8.endOfLine <|> P.endOfInput)
       quotedField' = case csvQuoteChar c of
@@ -75,17 +75,17 @@ csvrow c =
     return $ Just res
 
 field :: CSVSettings -> Parser ByteString
-field s = P.takeWhile (isFieldChar s) 
+field s = P.takeWhile (isFieldChar s)
 
 isFieldChar :: CSVSettings -> Word8 -> Bool
 isFieldChar s = notInClass xs'
   where xs = csvSep s : "\n\r"
-        xs' = case csvQuoteChar s of 
+        xs' = case csvQuoteChar s of
           Nothing -> xs
           Just x -> x : xs
 
 quotedField :: Char -> Parser ByteString
-quotedField c = 
+quotedField c =
   let quoted = string dbl *> return c
       dbl = B8.pack [c,c]
   in do
