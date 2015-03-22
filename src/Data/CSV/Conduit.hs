@@ -362,17 +362,8 @@ mapCSVFile set f fi fo =
 
 
 -------------------------------------------------------------------------------
--- | General purpose CSV transformer. Apply a list-like processing
--- function from 'Data.Conduit.List' to the rows of a CSV stream. You
--- need to provide a stream data source, a transformer and a stream
--- data sink.
---
--- An easy way to run this function would be 'runResourceT' after
--- feeding it all the arguments.
---
--- Example - map a function over the rows of a CSV file:
---
--- > transformCSV set (sourceFile inFile) (C.map f) (sinkFile outFile)
+-- | Like transformCSV' but uses the same settings for both input and
+-- output.
 transformCSV
     :: (MonadThrow m, CSV s a, CSV s' b)
     => CSVSettings
