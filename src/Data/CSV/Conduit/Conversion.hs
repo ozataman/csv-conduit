@@ -55,8 +55,8 @@ module Data.CSV.Conduit.Conversion
 import Control.Applicative (Alternative, Applicative, (<*>), (<$>), (<|>),
                                        empty, pure)
 import Control.Monad (MonadPlus, mplus, mzero)
-import Data.Attoparsec.Char8 (double, parseOnly)
-import qualified Data.Attoparsec.Char8 as A8
+import Data.Attoparsec.ByteString.Char8 (double, parseOnly)
+import qualified Data.Attoparsec.ByteString.Char8 as A8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
