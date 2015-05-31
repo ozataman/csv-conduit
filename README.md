@@ -104,8 +104,8 @@ regressions or optimization opportunities.
     import Data.CSV.Conduit
     import Data.Text (Text)
 
-    myProcessor :: Conduit (Row Text) m (Row Text)
-    myProcessor = undefined
+    myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
+    myProcessor = awaitForever $ yield
     
     -- Let's simply stream from a file, parse the CSV, reserialize it
     -- and push back into another file.
