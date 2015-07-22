@@ -35,6 +35,7 @@ module Data.CSV.Conduit.Conversion
     , FromField(..)
     , ToRecord(..)
     , ToField(..)
+    , Field
 
     -- * Parser
     , Parser
