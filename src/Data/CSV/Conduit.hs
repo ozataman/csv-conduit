@@ -309,7 +309,7 @@ readCSVFile set fp = liftIO . runResourceT $ sourceFile fp $= intoCSV set $$ hoi
 -- For example for 'ByteString':
 --
 -- >>> s <- LB.readFile "my.csv"
--- >>> decodeCSV 'def' s :: Vector (Vector ByteString)
+-- >>> decodeCSV Data.Default.def s :: Vector (Vector ByteString)
 --
 -- will just work.
 decodeCSV
