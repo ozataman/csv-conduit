@@ -289,14 +289,11 @@ writeHeaders set = do
 
 -------------------------------------------------------------------------------
 -- | Read the entire contents of a CSV file into memory.
--- readCSVFile
---     :: (GV.Vector v a, CSV ByteString a)
---     => CSVSettings
---     -- ^ Settings to use in deciphering stream
---     -> FilePath
---     -- ^ Input file
---     -> IO (v a)
-readCSVFile :: (MonadIO m, CSV ByteString a) => CSVSettings -> FilePath -> m (V.Vector a)
+readCSVFile
+    :: (MonadIO m, CSV ByteString a)
+    => CSVSettings -- ^ Settings to use in deciphering stream
+    -> FilePath    -- ^ Input file
+    -> m (V.Vector a)
 readCSVFile set fp = liftIO . runResourceT $ sourceFile fp $= intoCSV set $$ hoist lift (sinkVector 10)
 
 
