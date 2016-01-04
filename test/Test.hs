@@ -25,14 +25,15 @@ tests = [testGroup "Basic Ops" baseTests]
 
 baseTests :: [Test]
 baseTests =
-  [ testCase "mapping with id works" test_identityMap
-  , testCase "simple parsing works" test_simpleParse
+  [ testCase "mapping with id works"              test_identityMap
+  , testCase "simple parsing works"               (test_simpleParse testFile2)
+  , testCase "simple parsing works for Mac-Excel" (test_simpleParse testFile3)
   ]
 
 
 test_identityMap :: IO ()
 test_identityMap = do
-    _ <- runResourceT $ mapCSVFile csvSettings f testFile2 outFile
+    _ <- runResourceT $ mapCSVFile csvSettings f testFile1 outFile
     f1 <- readFile testFile2
     f2 <- readFile outFile
     f1 @=? f2
@@ -43,9 +44,9 @@ test_identityMap = do
     f = return
 
 
-test_simpleParse :: IO ()
-test_simpleParse = do
-  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings testFile1
+test_simpleParse :: FilePath -> IO ()
+test_simpleParse testFile = do
+  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings testFile
   V.mapM_ assertRow d
   where
     assertRow r = v3 @=? (v1 + v2)
@@ -57,10 +58,10 @@ test_simpleParse = do
 csvSettings :: CSVSettings
 csvSettings = defCSVSettings { csvQuoteChar = Just '`'}
 
-testFile1, testFile2 :: FilePath
+testFile1, testFile2, testFile3 :: FilePath
 testFile1 = "test/test.csv"
 testFile2 = "test/test.csv"
-
+testFile3 = "test/test-mac-excel.csv"
 
 readBS :: B.ByteString -> Int
 readBS = read . B.unpack
