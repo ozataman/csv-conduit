@@ -33,7 +33,7 @@ baseTests =
 
 test_identityMap :: IO ()
 test_identityMap = do
-    _ <- runResourceT $ mapCSVFile csvSettings f testFile1 outFile
+    _ <- runResourceT $ mapCSVFile csvSettings f testFile2 outFile
     f1 <- readFile testFile2
     f2 <- readFile outFile
     f1 @=? f2
