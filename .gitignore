@@ -10,3 +10,5 @@ TAGS
 *.ps
 *.aux
 *.hp
+.cabal-sandbox
+cabal.sandbox.config

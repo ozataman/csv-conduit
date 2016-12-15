@@ -49,6 +49,7 @@ first.
 - Daniel Corson (@dancor)
 - Dmitry Dzhus (@dzhus)
 - Niklas Hambüchen (@nh2)
+- Facundo Domínguez (@facundominguez)
 
 
 ### Introduction
