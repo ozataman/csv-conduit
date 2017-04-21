@@ -306,7 +306,7 @@ readCSVFile set fp = liftIO . runResourceT $ sourceFile fp $= intoCSV set $$ hoi
 -- For example for 'ByteString':
 --
 -- >>> s <- LB.readFile "my.csv"
--- >>> decodeCSV def s :: Either SomeException (Vector (Vector ByteString))
+-- >>> decodeCSV defCSVSettings s :: Either SomeException (Vector (Vector ByteString))
 --
 -- will work as long as the data is comma separated.
 decodeCSV
