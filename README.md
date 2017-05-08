@@ -58,8 +58,8 @@ first.
 * CSVeable is parameterized on both a stream type and a target CSV row type.
 * There are 2 basic row types and they implement *exactly* the same operations,
   so you can chose the right one for the job at hand:
-  - type MapRow t = Map t t
-  - type Row t = [t]
+  - `type MapRow t = Map t t`
+  - `type Row t = [t]`
 * You basically use the Conduits defined in this library to do the
   parsing from a CSV stream and rendering back into a CSV stream.
 * Use the full flexibility and modularity of conduits for sources and sinks.
@@ -76,46 +76,48 @@ regressions or optimization opportunities.
 
 #### Example #1: Basics Using Convenience API
 
-    {-# LANGUAGE OverloadedStrings #-}
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
 
-    import Data.Conduit
-    import Data.Conduit.Binary
-    import Data.Conduit.List as CL
-    import Data.CSV.Conduit
-    import Data.Text (Text)
-    
-    -- Just reverse te columns
-    myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
-    myProcessor = CL.map reverse
-    
-    test :: IO ()
-    test = runResourceT $ 
-      transformCSV defCSVSettings 
-                   (sourceFile "input.csv") 
-                   myProcessor
-                   (sinkFile "output.csv")
+import Data.Conduit
+import Data.Conduit.Binary
+import Data.Conduit.List as CL
+import Data.CSV.Conduit
+import Data.Text (Text)
 
+-- Just reverse te columns
+myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
+myProcessor = CL.map reverse
+
+test :: IO ()
+test = runResourceT $ 
+  transformCSV defCSVSettings 
+               (sourceFile "input.csv") 
+               myProcessor
+               (sinkFile "output.csv")
+```
 
 #### Example #2: Basics Using Conduit API
 
-    {-# LANGUAGE OverloadedStrings #-}
+```haskell
+{-# LANGUAGE OverloadedStrings #-}
 
-    import Data.Conduit
-    import Data.Conduit.Binary
-    import Data.CSV.Conduit
-    import Data.Text (Text)
+import Data.Conduit
+import Data.Conduit.Binary
+import Data.CSV.Conduit
+import Data.Text (Text)
 
-    myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
-    myProcessor = awaitForever $ yield
-    
-    -- Let's simply stream from a file, parse the CSV, reserialize it
-    -- and push back into another file.
-    test :: IO ()
-    test = runResourceT $ 
-      sourceFile "test/BigFile.csv" $= 
-      intoCSV defCSVSettings $=
-      myProcessor $=
-      fromCSV defCSVSettings $$
-      sinkFile "test/BigFileOut.csv"
+myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
+myProcessor = awaitForever $ yield
 
+-- Let's simply stream from a file, parse the CSV, reserialize it
+-- and push back into another file.
+test :: IO ()
+test = runResourceT $ 
+  sourceFile "test/BigFile.csv" $= 
+  intoCSV defCSVSettings $=
+  myProcessor $=
+  fromCSV defCSVSettings $$
+  sinkFile "test/BigFileOut.csv"
+```
 
