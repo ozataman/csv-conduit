@@ -54,6 +54,8 @@ module Data.CSV.Conduit.Conversion
     , namedRecord
     ) where
 
+import Control.Monad.Error.Class (MonadError(..))
+
 import Control.Applicative (Alternative, Applicative, (<*>), (<$>), (<|>),
                                        empty, pure)
 import Control.Monad (MonadPlus, mplus, mzero)
@@ -784,6 +786,10 @@ instance Monoid (Parser a) where
     {-# INLINE mempty #-}
     mappend = mplus
     {-# INLINE mappend #-}
+
+instance MonadError String Parser where
+  throwError = fail
+  catchError a f = either f pure . runParser $ a
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
