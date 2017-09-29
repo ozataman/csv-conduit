@@ -59,7 +59,6 @@ extra-source-files:
   changelog.md
   test/test.csv
   test/Test.hs
-  test/Bench.hs
 
 flag lib-Werror
   default: False
@@ -98,7 +97,6 @@ library
     , mmorph
     , primitive
     , resourcet              >= 1.1.2.1
-  ghc-prof-options: -fprof-auto
 
   if impl(ghc >= 7.2.1)
     cpp-options: -DGENERICS
