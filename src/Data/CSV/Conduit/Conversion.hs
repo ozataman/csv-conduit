@@ -54,8 +54,7 @@ module Data.CSV.Conduit.Conversion
     , namedRecord
     ) where
 
-import Control.Applicative (Alternative, Applicative, (<*>), (<$>), (<|>),
-                                       empty, pure)
+import Control.Applicative as A
 import Control.Monad (MonadPlus, mplus, mzero)
 import Data.Attoparsec.ByteString.Char8 (double, parseOnly)
 import qualified Data.Attoparsec.ByteString.Char8 as A8
@@ -65,16 +64,16 @@ import qualified Data.ByteString.Lazy as L
 
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.Map as M
-import Data.Monoid (Monoid, mappend, mempty)
+import Data.Monoid as Monoid
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
-import Data.Traversable (traverse)
+import Data.Traversable as DT
 import Data.Vector (Vector, (!))
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as U
-import Data.Word (Word, Word8, Word16, Word32, Word64)
+import Data.Word as W
 import GHC.Float (double2Float)
 import Prelude hiding (lookup, takeWhile)
 
@@ -155,7 +154,7 @@ class FromRecord a where
   
 #ifdef GENERICS
     default parseRecord :: (Generic a, GFromRecord (Rep a)) => Record -> Parser a
-    parseRecord r = to <$> gparseRecord r
+    parseRecord r = to A.<$> gparseRecord r
 #endif
 
 -- | Haskell lacks a single-element tuple type, so if you CSV data
@@ -309,7 +308,7 @@ lengthMismatch expected v =
             | otherwise     = show expected ++ "-tuple"
 
 instance FromField a => FromRecord [a] where
-    parseRecord = traverse parseField . V.toList
+    parseRecord = DT.traverse parseField . V.toList
 
 instance ToField a => ToRecord [a] where
     toRecord = V.fromList . map toField
@@ -553,7 +552,7 @@ instance ToField Int64 where
     {-# INLINE toField #-}
 
 -- | Accepts an unsigned decimal number.
-instance FromField Word where
+instance FromField W.Word where
     parseField = parseUnsigned "Word"
     {-# INLINE parseField #-}
 
@@ -779,7 +778,7 @@ instance MonadPlus Parser where
                                    in unParser a kf' ks
     {-# INLINE mplus #-}
 
-instance Monoid (Parser a) where
+instance Monoid.Monoid (Parser a) where
     mempty  = fail "mempty"
     {-# INLINE mempty #-}
     mappend = mplus
