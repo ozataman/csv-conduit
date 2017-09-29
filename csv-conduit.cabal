@@ -128,3 +128,6 @@ test-suite test
     , primitive
 
 
+source-repository head
+  type:     git
+  location: git://github.com/ozataman/csv-conduit.git
