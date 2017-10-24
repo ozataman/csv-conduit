@@ -228,13 +228,13 @@ intoCSVRow p = parse =$= puller
 
 
 -------------------------------------------------------------------------------
-instance (IntoCSV s (Row s'), Ord s', IsString s) => IntoCSV s (MapRow s') where
+instance (IntoCSV s (Row s'), Ord s') => IntoCSV s (MapRow s') where
     intoCSV set = intoCSVMap set
 
 
 -- | Generic 'MapRow' instance; any stream type with a 'Row' instance
 -- automatically gets a 'MapRow' instance.
-instance (FromCSV s (Row s'), Ord s', IsString s) => FromCSV s (MapRow s') where
+instance (FromCSV s (Row s'), IsString s) => FromCSV s (MapRow s') where
   rowToStr s r = rowToStr s . M.elems $ r
   fromCSV set = fromCSVMap set
 
