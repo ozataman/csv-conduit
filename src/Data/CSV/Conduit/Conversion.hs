@@ -647,7 +647,7 @@ instance ToField [Char] where
     toField = toField . T.pack
     {-# INLINE toField #-}
 
-parseSigned :: (Integral a, Num a) => String -> B.ByteString -> Parser a
+parseSigned :: (Integral a) => String -> B.ByteString -> Parser a
 parseSigned typ s = case parseOnly (A8.signed A8.decimal) s of
     Left err -> typeError typ s (Just err)
     Right n  -> pure n

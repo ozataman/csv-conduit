@@ -344,7 +344,7 @@ writeCSVFile set fo fmode rows = runResourceT $ do
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
 mapCSVFile
-    :: (MonadResource m, MonadThrow m, CSV ByteString a, CSV ByteString b)
+    :: (MonadResource m, CSV ByteString a, CSV ByteString b)
     => CSVSettings
     -- ^ Settings to use both for both input and output
     -> (a -> [b])
