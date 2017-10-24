@@ -4,15 +4,19 @@
 module Main where
 
 import qualified Data.ByteString.Char8          as B
+import           Data.Conduit                   (($$), (=$=))
+import qualified Data.Conduit.List              as CL
 import           Data.Map                       ((!))
+import           Data.Monoid
 import           Data.Text
 import qualified Data.Vector                    as V
 import           System.Directory
 import           Test.Framework                 (Test, defaultMain, testGroup)
 import           Test.Framework.Providers.HUnit
-import           Test.HUnit                     ((@=?))
+import           Test.HUnit                     ((@=?), (@?=))
 
 import           Data.CSV.Conduit
+import           Data.CSV.Conduit.Conversion
 
 
 main :: IO ()
@@ -20,7 +24,10 @@ main = defaultMain tests
 
 
 tests :: [Test]
-tests = [testGroup "Basic Ops" baseTests]
+tests = [
+    testGroup "Basic Ops" baseTests
+  , testGroup "NamedE error handling" namedETests
+  ]
 
 
 baseTests :: [Test]
@@ -29,6 +36,23 @@ baseTests =
   , testCase "simple parsing works" test_simpleParse
   ]
 
+
+namedETests :: [Test]
+namedETests =
+  [ testCase "parses correctly formatted file" $ do
+      res <- CL.sourceList ["foo\nbar" :: B.ByteString] =$=
+        intoCSV defCSVSettings $$
+        CL.consume
+      res @?= [NamedE (Right (Foo Bar))]
+  , testCase "retains error messages on incorrectly formatted rows and recovers" $ do
+      res <- CL.sourceList ["foo\nbad\nbar" :: B.ByteString] =$=
+        intoCSV defCSVSettings $$
+        CL.consume
+      res @?= [
+          NamedE (Left "Expected token \"bar\" but got \"bad\"")
+        , NamedE (Right (Foo Bar))
+        ]
+  ]
 
 test_identityMap :: IO ()
 test_identityMap = do
@@ -64,3 +88,17 @@ testFile2 = "test/test.csv"
 
 readBS :: B.ByteString -> Int
 readBS = read . B.unpack
+
+
+newtype Foo = Foo { foo :: Bar } deriving (Show, Eq)
+
+
+instance FromNamedRecord Foo where
+  parseNamedRecord nr = Foo <$> nr .: "foo"
+
+data Bar = Bar deriving (Show, Eq)
+
+
+instance FromField Bar where
+  parseField "bar" = pure Bar
+  parseField f     = fail ("Expected token \"bar\" but got \"" <> B.unpack f <> "\"")

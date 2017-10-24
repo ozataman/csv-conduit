@@ -20,7 +20,8 @@ module Data.CSV.Conduit
     , writeHeaders
 
     -- Types
-    , CSV (..)
+    , FromCSV  (..)
+    , IntoCSV (..)
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
@@ -60,7 +61,7 @@ import qualified Data.Vector.Generic.Mutable        as GMV
 import           System.IO
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
-                                                     Named (..),
+                                                     Named (..), NamedE (..),
                                                      ToNamedRecord (..),
                                                      runParser)
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
@@ -117,88 +118,101 @@ import           Data.CSV.Conduit.Types
 -- >  myProcessor $=
 -- >  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) $$
 -- >  sinkFile "test/BigFileOut.csv"
-class CSV s r where
-
-  -----------------------------------------------------------------------------
-  -- | Convert a CSV row into strict ByteString equivalent.
-  rowToStr :: CSVSettings -> r -> s
-
-  -----------------------------------------------------------------------------
-  -- | Turn a stream of 's' into a stream of CSV row type. An example
-  -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
-  intoCSV :: (MonadThrow m) => CSVSettings -> Conduit s m r
-
-  -----------------------------------------------------------------------------
-  -- | Turn a stream of CSV row type back into a stream of 's'. An
-  -- example would be rendering a stream of 'Row' 'ByteString' rows as
-  -- 'Text'.
-  fromCSV :: Monad m => CSVSettings -> Conduit r m s
+class IntoCSV s r where
+    -----------------------------------------------------------------------------
+    -- | Turn a stream of 's' into a stream of CSV row type. An example
+    -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
+    intoCSV :: (MonadThrow m) => CSVSettings -> Conduit s m r
 
 
+class FromCSV s r where
+    -----------------------------------------------------------------------------
+    -- | Turn a stream of CSV row type back into a stream of 's'. An
+    -- example would be rendering a stream of 'Row' 'ByteString' rows as
+    -- 'Text'.
+    fromCSV :: Monad m => CSVSettings -> Conduit r m s
 
+    -----------------------------------------------------------------------------
+    -- | Convert a CSV row into strict ByteString equivalent.
+    rowToStr :: CSVSettings -> r -> s
 
 
 ------------------------------------------------------------------------------
 -- | 'Row' instance using 'ByteString'
-instance CSV ByteString (Row ByteString) where
-  rowToStr s !r =
-    let
-      sep = B.pack [c2w (csvSep s)]
-      wrapField !f = case csvQuoteChar s of
-        Just !x -> (x `B8.cons` escape x f) `B8.snoc` x
-        _ -> f
-      escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
-    in B.intercalate sep . map wrapField $ r
+instance IntoCSV ByteString (Row ByteString) where
+    intoCSV set = intoCSVRow (BSP.row set)
 
-  intoCSV set = intoCSVRow (BSP.row set)
-  fromCSV set = fromCSVRow set
+
+instance FromCSV ByteString (Row ByteString) where
+    rowToStr s !r =
+        let
+          sep = B.pack [c2w (csvSep s)]
+          wrapField !f = case csvQuoteChar s of
+            Just !x-> (x `B8.cons` escape x f) `B8.snoc` x
+            _      -> f
+          escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
+        in B.intercalate sep . map wrapField $ r
+    fromCSV set = fromCSVRow set
 
 
 ------------------------------------------------------------------------------
--- | 'Row' instance using 'Text'
-instance CSV Text (Row Text) where
-  rowToStr s !r =
-    let
-      sep = T.pack [csvSep s]
-      wrapField !f = case csvQuoteChar s of
-        Just !x -> x `T.cons` escape x f `T.snoc` x
-        _ -> f
-      escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
-    in T.intercalate sep . map wrapField $ r
-
+instance IntoCSV Text (Row Text) where
   intoCSV set = intoCSVRow (TP.row set)
-  fromCSV set = fromCSVRow set
+
+
+-- | 'Row' instance using 'Text'
+instance FromCSV Text (Row Text) where
+    rowToStr s !r =
+      let
+        sep = T.pack [csvSep s]
+        wrapField !f = case csvQuoteChar s of
+          Just !x-> x `T.cons` escape x f `T.snoc` x
+          _      -> f
+        escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
+      in T.intercalate sep . map wrapField $ r
+
+    fromCSV set = fromCSVRow set
 
 
 -------------------------------------------------------------------------------
--- | 'Row' instance using 'Text' based on 'ByteString' stream
-instance CSV ByteString (Row Text) where
-    rowToStr s r = T.encodeUtf8 $ rowToStr s r
+instance IntoCSV ByteString (Row Text) where
     intoCSV set = intoCSV set =$= C.map (map T.decodeUtf8)
+
+-- | 'Row' instance using 'Text' based on 'ByteString' stream
+instance FromCSV ByteString (Row Text) where
+    rowToStr s r = T.encodeUtf8 $ rowToStr s r
+
     fromCSV set = fromCSV set =$= C.map T.encodeUtf8
 
 
 
 -------------------------------------------------------------------------------
+instance IntoCSV ByteString (Row String) where
+    intoCSV set = intoCSV set =$= C.map (map B8.unpack)
+
+
 -- | 'Row' instance using 'String' based on 'ByteString' stream.
 -- Please note this uses the ByteString operations underneath and has
 -- lots of unnecessary overhead. Included for convenience.
-instance CSV ByteString (Row String) where
+instance FromCSV ByteString (Row String) where
     rowToStr s r = rowToStr s $ map B8.pack r
-    intoCSV set = intoCSV set =$= C.map (map B8.unpack)
     fromCSV set = C.map (map B8.pack) =$= fromCSV set
 
 
--- | Support for parsing rows in the 'Vector' form.
-instance (CSV s (Row s)) => CSV s (V.Vector s) where
-    rowToStr s r = rowToStr s . V.toList $ r
+-------------------------------------------------------------------------------
+instance (IntoCSV s (Row s)) => IntoCSV s (V.Vector s) where
     intoCSV set = intoCSV set =$= C.map (V.fromList)
+
+
+-- | Support for parsing rows in the 'Vector' form.
+instance (FromCSV s (Row s)) => FromCSV s (V.Vector s) where
+    rowToStr s r = rowToStr s . V.toList $ r
     fromCSV set = C.map (V.toList) =$= fromCSV set
 
 
 
 -------------------------------------------------------------------------------
-fromCSVRow :: (Monad m, IsString s, CSV s r)
+fromCSVRow :: (Monad m, IsString s, FromCSV s r)
            => CSVSettings -> Conduit r m s
 fromCSVRow set = awaitForever $ \row -> mapM_ yield [rowToStr set row, "\n"]
 
@@ -214,16 +228,19 @@ intoCSVRow p = parse =$= puller
 
 
 -------------------------------------------------------------------------------
+instance (IntoCSV s (Row s'), Ord s', IsString s) => IntoCSV s (MapRow s') where
+    intoCSV set = intoCSVMap set
+
+
 -- | Generic 'MapRow' instance; any stream type with a 'Row' instance
 -- automatically gets a 'MapRow' instance.
-instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
+instance (FromCSV s (Row s'), Ord s', IsString s) => FromCSV s (MapRow s') where
   rowToStr s r = rowToStr s . M.elems $ r
-  intoCSV set = intoCSVMap set
   fromCSV set = fromCSVMap set
 
 
 -------------------------------------------------------------------------------
-intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
+intoCSVMap :: (Ord a, MonadThrow m, IntoCSV s [a])
            => CSVSettings -> Conduit s m (MapRow a)
 intoCSVMap set = intoCSV set =$= (headers >>= converter)
   where
@@ -237,23 +254,41 @@ intoCSVMap set = intoCSV set =$= (headers >>= converter)
     toMapCSV !hs !fs = M.fromList $ zip hs fs
 
 
--- | Conversion of stream directly to/from a custom complex haskell
--- type.
-instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) =>
-    CSV s (Named a) where
-    rowToStr s a = rowToStr s . toNamedRecord . getNamed $ a
+instance (FromNamedRecord a, IntoCSV s (MapRow ByteString)) =>
+    IntoCSV s (Named a) where
     intoCSV set = intoCSV set =$= C.mapMaybe go
         where
           go x = either (const Nothing) (Just . Named) $
                  runParser (parseNamedRecord x)
 
+
+
+-- | Conversion of stream directly to/from a custom complex haskell
+-- type. Note that this *eats errors*. If you want to handle errors on
+-- a row-by-row basis, use 'NamedE'
+instance (ToNamedRecord a, FromCSV s (MapRow ByteString)) =>
+    FromCSV s (Named a) where
+    rowToStr s a = rowToStr s . toNamedRecord . getNamed $ a
     fromCSV set = C.map go =$= fromCSV set
         where
           go = toNamedRecord . getNamed
 
 
 -------------------------------------------------------------------------------
-fromCSVMap :: (Monad m, IsString s, CSV s [a])
+-- | A parser like 'Named' that handles parse errors rather than
+-- ignoring them. Note that there is no FromCSV instance to serialized
+-- 'NamedE' values. This is because there is no sensible behavior for
+-- serializing the errors.
+instance (FromNamedRecord a, IntoCSV s (MapRow ByteString)) =>
+    IntoCSV s (NamedE a) where
+    intoCSV set = intoCSV set =$= C.map go
+        where
+          go x = NamedE $
+                 runParser (parseNamedRecord x)
+
+
+-------------------------------------------------------------------------------
+fromCSVMap :: (Monad m, IsString s, FromCSV s [a])
            => CSVSettings -> Conduit (M.Map k a) m s
 fromCSVMap set = awaitForever push
   where
@@ -269,7 +304,7 @@ fromCSVMap set = awaitForever push
 --
 -- > ... =$= writeHeaders settings >> fromCSV settings $$ sinkFile "..."
 writeHeaders
-    :: (Monad m, CSV s (Row r), IsString s)
+    :: (Monad m, FromCSV s (Row r), IsString s)
     => CSVSettings
     -> Conduit (MapRow r) m s
 writeHeaders set = do
@@ -290,7 +325,7 @@ writeHeaders set = do
 -------------------------------------------------------------------------------
 -- | Read the entire contents of a CSV file into memory.
 readCSVFile
-    :: (MonadIO m, CSV ByteString a)
+    :: (MonadIO m, IntoCSV ByteString a)
     => CSVSettings -- ^ Settings to use in deciphering stream
     -> FilePath    -- ^ Input file
     -> m (V.Vector a)
@@ -310,7 +345,7 @@ readCSVFile set fp = liftIO . runResourceT $ sourceFile fp $= intoCSV set $$ hoi
 --
 -- will work as long as the data is comma separated.
 decodeCSV
-    :: (GV.Vector v a, CSV s a)
+    :: (GV.Vector v a, IntoCSV s a)
     => CSVSettings
     -> s
     -> Either SomeException (v a)
@@ -322,7 +357,7 @@ decodeCSV set bs = runST $ runExceptionT $ C.sourceList [bs] $= intoCSV set $$ h
 -- | Write CSV data into file. As we use a 'ByteString' sink, you'll
 -- need to get your data into a 'ByteString' stream type.
 writeCSVFile
-  :: (CSV ByteString a)
+  :: (FromCSV ByteString a)
   => CSVSettings
   -- ^ CSV Settings
   -> FilePath
@@ -344,7 +379,7 @@ writeCSVFile set fo fmode rows = runResourceT $ do
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
 mapCSVFile
-    :: (MonadResource m, CSV ByteString a, CSV ByteString b)
+    :: (MonadResource m, IntoCSV ByteString a, FromCSV ByteString b)
     => CSVSettings
     -- ^ Settings to use both for both input and output
     -> (a -> [b])
@@ -362,7 +397,7 @@ mapCSVFile set f fi fo =
 -- | Like transformCSV' but uses the same settings for both input and
 -- output.
 transformCSV
-    :: (MonadThrow m, CSV s a, CSV s' b)
+    :: (MonadThrow m, IntoCSV s a, FromCSV s' b)
     => CSVSettings
     -- ^ Settings to be used for both input and output
     -> Source m s
@@ -388,7 +423,7 @@ transformCSV set = transformCSV' set set
 --
 -- > transformCSV setIn setOut (sourceFile inFile) (C.map f) (sinkFile outFile)
 transformCSV'
-    :: (MonadThrow m, CSV s a, CSV s' b)
+    :: (MonadThrow m, IntoCSV s a, FromCSV s' b)
     => CSVSettings
     -- ^ Settings to be used for input
     -> CSVSettings
@@ -433,8 +468,7 @@ sinkVector by = do
             return $! v'
           Just x -> do
             v' <- case GMV.length v == i of
-                    True -> lift $ GMV.grow v by
+                    True  -> lift $ GMV.grow v by
                     False -> return v
             lift $ GMV.write v' i x
             go (i+1) v'
-
