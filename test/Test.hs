@@ -94,11 +94,11 @@ newtype Foo = Foo { foo :: Bar } deriving (Show, Eq)
 
 
 instance FromNamedRecord Foo where
-  parseNamedRecord nr = Foo <$> nr .: "foo"
+  parseNamedRecord nr = fmap Foo (nr .: "foo")
 
 data Bar = Bar deriving (Show, Eq)
 
 
 instance FromField Bar where
-  parseField "bar" = pure Bar
+  parseField "bar" = return Bar
   parseField f     = fail ("Expected token \"bar\" but got \"" <> B.unpack f <> "\"")
