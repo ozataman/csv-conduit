@@ -28,6 +28,7 @@ module Data.CSV.Conduit.Conversion
     -- * Type conversion
       Only(..)
     , Named (..)
+    , NamedE (..)
     , Record
     , NamedRecord
     , FromRecord(..)
@@ -112,10 +113,16 @@ type NamedRecord = M.Map B8.ByteString B8.ByteString
 -- | A wrapper around custom haskell types that can directly be
 -- converted/parsed from an incoming CSV stream.
 --
--- We define this wrapper to stop GHC from complaining
--- about overlapping instances. Just use 'getNamed' to get your
--- object out of the wrapper.
+-- We define this wrapper to stop GHC from complaining about
+-- overlapping instances. Just use 'getNamed' to get your object out
+-- of the wrapper. Note that this erases parse errors when you use it
+-- and is being kept for backwards-compatibility reasons. If you
+-- intend on handling parse errors, see 'NamedE'.
 newtype Named a = Named { getNamed :: a } deriving (Eq,Show,Read,Ord)
+
+-- | A wrapper just like 'Named' which, upon failing to parse the
+-- wrapped type captures the parse error.
+newtype NamedE a = NamedE { getNamedE :: Either String a } deriving (Eq,Show,Read,Ord)
 
 -- | A record corresponds to a single line in a CSV file.
 type Record = Vector B8.ByteString
