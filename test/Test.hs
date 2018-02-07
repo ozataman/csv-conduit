@@ -1,18 +1,22 @@
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 
 module Main where
 
+import           Control.Exception
 import qualified Data.ByteString.Char8          as B
 import           Data.Map                       ((!))
+import           Data.Monoid
 import           Data.Text
 import qualified Data.Vector                    as V
 import           System.Directory
 import           Test.Framework                 (Test, defaultMain, testGroup)
 import           Test.Framework.Providers.HUnit
-import           Test.HUnit                     ((@=?))
+import           Test.HUnit                     (assertFailure, (@=?))
 
 import           Data.CSV.Conduit
+import           Data.CSV.Conduit.Conversion
 
 
 main :: IO ()
@@ -20,7 +24,10 @@ main = defaultMain tests
 
 
 tests :: [Test]
-tests = [testGroup "Basic Ops" baseTests]
+tests =
+  [ testGroup "Basic Ops" baseTests
+  , testGroup "decodeCSV" decodeCSVTests
+  ]
 
 
 baseTests :: [Test]
@@ -28,6 +35,36 @@ baseTests =
   [ testCase "mapping with id works" test_identityMap
   , testCase "simple parsing works" test_simpleParse
   ]
+
+
+decodeCSVTests :: [Test]
+decodeCSVTests =
+  [ testCase "parses a CSV" $ do
+      let efoos = decodeCSV defCSVSettings ("Foo\nfoo" :: B.ByteString)
+      case efoos :: Either SomeException (V.Vector (Named Foo)) of
+        Left e     -> assertFailure (show e)
+        Right foos -> V.fromList [Named Foo] @=? foos
+  , testCase "eats parse errors, evidently" $ do
+      let efoos = decodeCSV defCSVSettings ("Foo\nbad" :: B.ByteString)
+      case efoos :: Either SomeException (V.Vector (Named Foo)) of
+        Left e     -> assertFailure (show e)
+        Right foos -> mempty @=? foos
+  ]
+
+
+data Foo = Foo deriving (Show, Eq)
+
+
+instance FromNamedRecord Foo where
+  parseNamedRecord nr = do
+    s <- nr .: "Foo"
+    case s of
+      "foo" -> pure Foo
+      _ -> fail ("Expected \"foo\" but got " <> B.unpack s)
+
+
+instance ToNamedRecord Foo where
+  toNamedRecord Foo = namedRecord ["Foo" .= ("foo" :: B.ByteString)]
 
 
 test_identityMap :: IO ()

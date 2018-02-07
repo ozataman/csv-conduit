@@ -1,7 +1,10 @@
-resolver: lts-9.6
+resolver: lts-10.4
 packages:
 - .
-extra-deps: []
+extra-deps: # []
+- resourcet-1.2.0
+- conduit-1.3.0
+- conduit-extra-1.3.0
 flags:
   csv-conduit:
     lib-Werror: true
