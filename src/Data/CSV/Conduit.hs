@@ -50,6 +50,7 @@ import           Data.Conduit.Binary                (sinkFile, sinkIOHandle,
                                                      sourceFile)
 import qualified Data.Conduit.List                  as C
 import qualified Data.Map                           as M
+import           Data.Maybe
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
@@ -145,7 +146,10 @@ instance CSV ByteString (Row ByteString) where
     let
       sep = B.pack [c2w (csvSep s)]
       wrapField !f = case csvQuoteChar s of
-        Just !x -> (x `B8.cons` escape x f) `B8.snoc` x
+        Just !x ->
+          if B8.elem x f
+            then (x `B8.cons` escape x f) `B8.snoc` x
+            else f
         _ -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
@@ -161,7 +165,10 @@ instance CSV Text (Row Text) where
     let
       sep = T.pack [csvSep s]
       wrapField !f = case csvQuoteChar s of
-        Just !x -> x `T.cons` escape x f `T.snoc` x
+        Just !x ->
+          if isJust (T.findIndex (==x) f)
+            then x `T.cons` escape x f `T.snoc` x
+            else f
         _ -> f
       escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
     in T.intercalate sep . map wrapField $ r
