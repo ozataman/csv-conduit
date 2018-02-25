@@ -96,7 +96,7 @@ library
     , mtl
     , mmorph
     , primitive
-    , resourcet              >= 1.1.2.1
+    , resourcet              >= 1.1.2.1 && < 1.2
 
   if impl(ghc >= 7.2.1)
     cpp-options: -DGENERICS
