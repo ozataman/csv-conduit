@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE CPP                   #-}
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -58,6 +59,7 @@ import qualified Data.Text.Encoding                 as T
 import qualified Data.Vector                        as V
 import qualified Data.Vector.Generic                as GV
 import qualified Data.Vector.Generic.Mutable        as GMV
+import           Data.Void                          (Void)
 import           System.IO
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
@@ -255,7 +257,7 @@ instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) =>
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
-           => CSVSettings -> ConduitT (M.Map k a) s m ()
+           => CSVSettings -> ConduitM (M.Map k a) s m ()
 fromCSVMap set = awaitForever push
   where
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
@@ -295,7 +297,7 @@ readCSVFile
     => CSVSettings -- ^ Settings to use in deciphering stream
     -> FilePath    -- ^ Input file
     -> m (V.Vector a)
-readCSVFile set fp = liftIO . runResourceT $ runConduit $ sourceFile fp .| intoCSV set .| sinkVector growthFactor
+readCSVFile set fp = liftIO . runResourceT $ runConduit $ sourceFile fp .| intoCSV set .| transPipe lift (sinkVector growthFactor)
   where
     growthFactor = 10
 
@@ -358,16 +360,22 @@ writeCSVFile set fo fmode rows = runResourceT $ runConduit $ do
 -- An easy way to run this function would be 'runResourceT' after
 -- feeding it all the arguments.
 mapCSVFile
-    :: (MonadResource m, CSV ByteString a, CSV ByteString b, MonadThrow m)
-    => CSVSettings
-    -- ^ Settings to use both for both input and output
-    -> (a -> [b])
-    -- ^ A mapping function
-    -> FilePath
-    -- ^ Input file
-    -> FilePath
-    -- ^ Output file
-    -> m ()
+    :: ( MonadResource m
+       , CSV ByteString a
+       , CSV ByteString b
+# if MIN_VERSION_resourcet(1,2,0)
+       , MonadThrow m
+#endif
+       )
+      => CSVSettings
+      -- ^ Settings to use both for both input and output
+      -> (a -> [b])
+      -- ^ A mapping function
+      -> FilePath
+      -- ^ Input file
+      -> FilePath
+      -- ^ Output file
+      -> m ()
 mapCSVFile set f fi fo =
   transformCSV set (sourceFile fi) (C.concatMap f) (sinkFile fo)
 
