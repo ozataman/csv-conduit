@@ -15,14 +15,11 @@ addons:
 # change flags or use --stack-yaml to point to a different file.
 matrix:
   include:
-    - env: ARGS="--resolver=lts-2"
-    - env: ARGS="--resolver=lts-3"
-    - env: ARGS="--resolver=lts-4"
-    - env: ARGS="--resolver=lts-5"
     - env: ARGS="--resolver=lts-6"
     - env: ARGS="--resolver=lts-7"
     - env: ARGS="--resolver=lts-8"
     - env: ARGS="--resolver=lts-9"
+    - env: ARGS="--resolver=lts-10"
     - env: ARGS="--resolver=nightly"
   allow_failures:
     - env: ARGS="--resolver=nightly"
@@ -47,3 +44,4 @@ script:
 cache:
   directories:
   - $HOME/.stack
+  - .stack-work
