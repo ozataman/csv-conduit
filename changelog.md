@@ -1,3 +1,6 @@
+0.6.8.1
+* Fix documentation mistake in FromNamedRecord/ToNamedRecord examples.
+
 0.6.8
 * Haddocks improvements
 * Fix inlining and specialization rules around formatDecimal
