@@ -1,4 +1,5 @@
 {-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -fno-warn-unused-imports #-}
 
 module Data.CSV.Conduit.Monoid
     ( (<>)

@@ -7,7 +7,7 @@ module Main where
 import           Control.Exception
 import qualified Data.ByteString.Char8          as B
 import           Data.Map                       ((!))
-import           Data.Monoid
+import           Data.Monoid                    as M
 import           Data.Text
 import qualified Data.Vector                    as V
 import           System.Directory
@@ -48,7 +48,7 @@ decodeCSVTests =
       let efoos = decodeCSV defCSVSettings ("Foo\nbad" :: B.ByteString)
       case efoos :: Either SomeException (V.Vector (Named Foo)) of
         Left e     -> assertFailure (show e)
-        Right foos -> mempty @=? foos
+        Right foos -> M.mempty @=? foos
   ]
 
 
@@ -60,7 +60,7 @@ instance FromNamedRecord Foo where
     s <- nr .: "Foo"
     case s of
       "foo" -> pure Foo
-      _ -> fail ("Expected \"foo\" but got " <> B.unpack s)
+      _     -> fail ("Expected \"foo\" but got " <> B.unpack s)
 
 
 instance ToNamedRecord Foo where

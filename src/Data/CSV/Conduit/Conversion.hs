@@ -64,7 +64,7 @@ import qualified Data.ByteString.Lazy as L
 
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.Map as M
-import Data.Monoid as Monoid
+import Data.Semigroup as Semigroup
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as LT
@@ -778,11 +778,9 @@ instance MonadPlus Parser where
                                    in unParser a kf' ks
     {-# INLINE mplus #-}
 
-instance Monoid.Monoid (Parser a) where
-    mempty  = fail "mempty"
-    {-# INLINE mempty #-}
-    mappend = mplus
-    {-# INLINE mappend #-}
+instance Semigroup.Semigroup (Parser a) where
+    (<>) = mplus
+    {-# INLINE (<>) #-}
 
 apP :: Parser (a -> b) -> Parser a -> Parser b
 apP d e = do
