@@ -98,6 +98,7 @@ library
     , mmorph
     , primitive
     , resourcet              >= 1.1.2.1
+    , semigroups
 
   if impl(ghc >= 7.2.1)
     cpp-options: -DGENERICS
