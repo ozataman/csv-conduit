@@ -751,6 +751,11 @@ instance Monad Parser where
     {-# INLINE (>>=) #-}
     return a = Parser $ \_kf ks -> ks a
     {-# INLINE return #-}
+
+#if MIN_VERSION_base(4,13,0)
+instance MonadFail Parser where
+#endif
+
     fail msg = Parser $ \kf _ks -> kf msg
     {-# INLINE fail #-}
 
