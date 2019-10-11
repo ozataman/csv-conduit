@@ -59,7 +59,7 @@ import qualified Data.Text.Encoding                 as T
 import qualified Data.Vector                        as V
 import qualified Data.Vector.Generic                as GV
 import qualified Data.Vector.Generic.Mutable        as GMV
-import           Data.Void                          (Void)
+import           Data.Void                           as Void
 import           System.IO
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
@@ -327,7 +327,7 @@ decodeCSV set bs = runST $ runExceptT pipeline
     csvConvert' :: ConduitM s a (CatchT (ST s1)) ()
     csvConvert' = intoCSV set
     growthFactor = 10
-    sink :: ConduitM a Void (ExceptT SomeException (ST s1)) (v a)
+    sink :: ConduitM a Void.Void (ExceptT SomeException (ST s1)) (v a)
     sink = sinkVector growthFactor
     pipeline :: ExceptT SomeException (ST s1) (v a)
     pipeline = runConduit (src .| csvConvert .| sink)
@@ -391,7 +391,7 @@ transformCSV
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
     -> ConduitM a b m ()
     -- ^ A transforming conduit
-    -> ConduitM s' Void m ()
+    -> ConduitM s' Void.Void m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
 transformCSV set = transformCSV' set set
@@ -419,7 +419,7 @@ transformCSV'
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
     -> ConduitM a b m ()
     -- ^ A transforming conduit
-    -> ConduitM s' Void m ()
+    -> ConduitM s' Void.Void m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
 transformCSV' setIn setOut source c sink = runConduit $
