@@ -4,7 +4,6 @@
 module Data.CSV.Conduit.Types where
 
 -------------------------------------------------------------------------------
-import           Data.Default
 import qualified Data.Map     as M
 -------------------------------------------------------------------------------
 
@@ -37,10 +36,6 @@ defCSVSettings = CSVSettings
   { csvSep = ','
   , csvQuoteChar = Just '"'
   }
-
-
-instance Default CSVSettings where
-    def = defCSVSettings
 
 -------------------------------------------------------------------------------
 -- | A 'Row' is just a list of fields
