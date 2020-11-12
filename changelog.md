@@ -1,3 +1,6 @@
+0.7.2.0
+* Remove some dependency upper bounds for forward compatibility.
+
 0.7.1.0
 * Add MonadFail instance for Parser. [PR 38](https://github.com/ozataman/csv-conduit/pull/38)
 
