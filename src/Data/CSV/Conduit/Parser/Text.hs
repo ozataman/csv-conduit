@@ -58,15 +58,17 @@ csv s = do
 row :: CSVSettings -> Parser (Maybe (Row Text))
 row csvs = csvrow csvs <|> badrow
 
+csvEndOfLine :: Parser ()
+csvEndOfLine = (char '\n' >> return ()) <|> (string (T.pack "\r\n") >> return ()) <|> (char '\r' >> return ())
 
 badrow :: Parser (Maybe (Row Text))
 badrow = P.takeWhile (not . T.isEndOfLine) *>
-         (T.endOfLine <|> T.endOfInput) *> return Nothing
+         (csvEndOfLine <|> T.endOfInput) *> return Nothing
 
 csvrow :: CSVSettings -> Parser (Maybe (Row Text))
 csvrow c =
   let rowbody = (quotedField' <|> field c) `sepBy` T.char (csvSep c)
-      properrow = rowbody <* (T.endOfLine <|> P.endOfInput)
+      properrow = rowbody <* (csvEndOfLine <|> P.endOfInput)
       quotedField' = case csvQuoteChar c of
           Nothing -> mzero
           Just q' -> try (quotedField q')
