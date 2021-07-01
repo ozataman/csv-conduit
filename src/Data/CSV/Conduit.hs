@@ -20,12 +20,14 @@ module Data.CSV.Conduit
     , transformCSV'
     , mapCSVFile
     , writeHeaders
+    , writeHeadersOrdered
 
     -- Types
     , CSV (..)
     , CSVSettings (..)
     , defCSVSettings
     , MapRow
+    , OrderedMapRow
     , Row
 
     -- * Re-exported For Convenience
@@ -52,6 +54,7 @@ import           Data.Conduit.Binary                (sinkFile, sinkIOHandle,
                                                      sourceFile)
 import qualified Data.Conduit.List                  as C
 import qualified Data.Map                           as M
+import qualified Data.Map.Ordered                   as MO
 import           Data.String
 import           Data.Text                          (Text)
 import qualified Data.Text                          as T
@@ -63,8 +66,11 @@ import           Data.Void                           as Void
 import           System.IO
 -------------------------------------------------------------------------------
 import           Data.CSV.Conduit.Conversion        (FromNamedRecord (..),
+                                                     FromNamedRecordOrdered (..),
                                                      Named (..),
+                                                     NamedOrdered (..),
                                                      ToNamedRecord (..),
+                                                     ToNamedRecordOrdered (..),
                                                      runParser)
 import qualified Data.CSV.Conduit.Parser.ByteString as BSP
 import qualified Data.CSV.Conduit.Parser.Text       as TP
@@ -224,6 +230,11 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (MapRow s') where
   intoCSV set = intoCSVMap set
   fromCSV set = fromCSVMap set
 
+instance (CSV s (Row s'), Ord s', IsString s) => CSV s (OrderedMapRow s') where
+  rowToStr s r = rowToStr s . (map snd . MO.assocs) $ r
+  intoCSV set = intoCSVMapOrdered set
+  fromCSV set = fromCSVMapOrdered set
+
 
 -------------------------------------------------------------------------------
 intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
@@ -238,6 +249,19 @@ intoCSVMap set = intoCSV set .| (headers >>= converter)
         Just hs -> return hs
     converter hs = awaitForever $ yield . toMapCSV hs
     toMapCSV !hs !fs = M.fromList $ zip hs fs
+
+intoCSVMapOrdered :: (Ord a, MonadThrow m, CSV s [a])
+           => CSVSettings -> ConduitM s (OrderedMapRow a) m ()
+intoCSVMapOrdered set = intoCSV set .| (headers >>= converter)
+  where
+    headers = do
+      mrow <- await
+      case mrow of
+        Nothing -> return []
+        Just [] -> headers
+        Just hs -> return hs
+    converter hs = awaitForever $ yield . toMapCSV hs
+    toMapCSV !hs !fs = MO.fromList $ zip hs fs
 
 
 -- | Conversion of stream directly to/from a custom complex haskell
@@ -254,6 +278,18 @@ instance (FromNamedRecord a, ToNamedRecord a, CSV s (MapRow ByteString)) =>
         where
           go = toNamedRecord . getNamed
 
+instance (FromNamedRecordOrdered a, ToNamedRecordOrdered a, CSV s (OrderedMapRow ByteString)) =>
+    CSV s (NamedOrdered a) where
+    rowToStr s a = rowToStr s . toNamedRecordOrdered . getNamedOrdered $ a
+    intoCSV set = intoCSV set .| C.mapMaybe go
+        where
+          go x = either (const Nothing) (Just . NamedOrdered) $
+                 runParser (parseNamedRecordOrdered x)
+
+    fromCSV set = C.map go .| fromCSV set
+        where
+          go = toNamedRecordOrdered . getNamedOrdered
+
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
@@ -261,6 +297,12 @@ fromCSVMap :: (Monad m, IsString s, CSV s [a])
 fromCSVMap set = awaitForever push
   where
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
+
+fromCSVMapOrdered :: (Monad m, IsString s, CSV s [a])
+                  => CSVSettings -> ConduitM (MO.OMap k a) s m ()
+fromCSVMapOrdered set = awaitForever push
+  where
+    push r = mapM_ yield [rowToStr set (map snd $ MO.assocs r), "\n"]
 
 
 -------------------------------------------------------------------------------
@@ -282,6 +324,19 @@ writeHeaders set = do
     Just row -> mapM_ yield [ rowToStr set (M.keys row)
                             , "\n"
                             , rowToStr set (M.elems row)
+                            , "\n" ]
+
+writeHeadersOrdered
+    :: (Monad m, CSV s (Row r), IsString s)
+    => CSVSettings
+    -> ConduitM (OrderedMapRow r) s m ()
+writeHeadersOrdered set = do
+  mrow <- await
+  case mrow of
+    Nothing -> return ()
+    Just row -> mapM_ yield [ rowToStr set (map fst $ MO.assocs row)
+                            , "\n"
+                            , rowToStr set (map snd $ MO.assocs row)
                             , "\n" ]
 
 

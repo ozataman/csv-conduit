@@ -5,7 +5,8 @@ module Data.CSV.Conduit.Types where
 
 -------------------------------------------------------------------------------
 import           Data.Default
-import qualified Data.Map     as M
+import qualified Data.Map         as M
+import qualified Data.Map.Ordered as MO
 -------------------------------------------------------------------------------
 
 
@@ -51,3 +52,8 @@ type Row a = [a]
 -- are keys and row's individual cell values are the values of the
 -- 'Map'.
 type MapRow a = M.Map a a
+
+-- | An 'OrderedMapRow' is a dictionary based on 'Data.Map.Ordered' where column names
+-- are keys and row's individual cell values are the values of the
+-- 'OMap'.
+type OrderedMapRow a = MO.OMap a a

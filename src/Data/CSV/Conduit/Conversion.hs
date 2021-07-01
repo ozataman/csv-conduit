@@ -28,11 +28,15 @@ module Data.CSV.Conduit.Conversion
     -- * Type conversion
       Only(..)
     , Named (..)
+    , NamedOrdered (..)
     , Record
     , NamedRecord
+    , NamedRecordOrdered
     , FromRecord(..)
     , FromNamedRecord(..)
+    , FromNamedRecordOrdered(..)
     , ToNamedRecord(..)
+    , ToNamedRecordOrdered(..)
     , FromField(..)
     , ToRecord(..)
     , ToField(..)
@@ -47,11 +51,13 @@ module Data.CSV.Conduit.Conversion
     , (.!)
     , unsafeIndex
     , lookup
+    , lookupOrdered
     , (.:)
     , namedField
     , (.=)
     , record
     , namedRecord
+    , namedRecordOrdered
     ) where
 
 import Control.Applicative as A
@@ -64,6 +70,7 @@ import qualified Data.ByteString.Lazy as L
 
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.Map as M
+import qualified Data.Map.Ordered as MO
 import Data.Semigroup as Semigroup
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -107,6 +114,7 @@ fromStrict = L.fromChunks . (:[])
 
 -- | A shorthand for the ByteString case of 'MapRow'
 type NamedRecord = M.Map B8.ByteString B8.ByteString
+type NamedRecordOrdered = MO.OMap B8.ByteString B8.ByteString
 
 
 -- | A wrapper around custom haskell types that can directly be
@@ -116,6 +124,7 @@ type NamedRecord = M.Map B8.ByteString B8.ByteString
 -- about overlapping instances. Just use 'getNamed' to get your
 -- object out of the wrapper.
 newtype Named a = Named { getNamed :: a } deriving (Eq,Show,Read,Ord)
+newtype NamedOrdered a = NamedOrdered { getNamedOrdered :: a } deriving (Eq,Show,Read,Ord)
 
 -- | A record corresponds to a single line in a CSV file.
 type Record = Vector B8.ByteString
@@ -362,6 +371,9 @@ class FromNamedRecord a where
     parseNamedRecord r = to <$> gparseNamedRecord r
 #endif
 
+class FromNamedRecordOrdered a where
+    parseNamedRecordOrdered :: NamedRecordOrdered -> Parser a
+
 -- | A type that can be converted to a single CSV record.
 --
 -- An example type and instance:
@@ -379,11 +391,20 @@ class ToNamedRecord a where
     toNamedRecord = namedRecord . gtoRecord . from
 #endif
 
+class ToNamedRecordOrdered a where
+    toNamedRecordOrdered :: a -> NamedRecordOrdered
+
 instance FromField a => FromNamedRecord (M.Map B.ByteString a) where
     parseNamedRecord m = traverse parseField m
 
+instance FromField a => FromNamedRecordOrdered (MO.OMap B.ByteString a) where
+    parseNamedRecordOrdered m = traverse parseField m
+
 instance ToField a => ToNamedRecord (M.Map B.ByteString a) where
     toNamedRecord = M.map toField
+
+instance ToField a => ToNamedRecordOrdered (MO.OMap B.ByteString a) where
+    toNamedRecordOrdered a = MO.fromList $ map (fmap toField) $ MO.assocs a
 
 -- instance FromField a => FromNamedRecord (HM.HashMap B.ByteString a) where
 --     parseNamedRecord m = traverse (\ s -> parseField s) m
@@ -700,6 +721,11 @@ lookup m name = maybe (fail err) parseField $ M.lookup name m
   where err = "no field named " ++ show (B8.unpack name)
 {-# INLINE lookup #-}
 
+lookupOrdered :: FromField a => NamedRecordOrdered -> B.ByteString -> Parser a
+lookupOrdered m name = maybe (fail err) parseField $ MO.lookup name m
+  where err = "no field named " ++ show (B8.unpack name)
+{-# INLINE lookupOrdered #-}
+
 -- | Alias for 'lookup'.
 (.:) :: FromField a => NamedRecord -> B.ByteString -> Parser a
 (.:) = lookup
@@ -725,6 +751,9 @@ record = V.fromList
 -- pairs.  Use '.=' to construct such a pair from a name and a value.
 namedRecord :: [(B.ByteString, B.ByteString)] -> NamedRecord
 namedRecord = M.fromList
+
+namedRecordOrdered :: [(B.ByteString, B.ByteString)] -> NamedRecordOrdered
+namedRecordOrdered = MO.fromList
 
 ------------------------------------------------------------------------
 -- Parser for converting records to data types
