@@ -94,6 +94,7 @@ library
     , array
     , blaze-builder
     , unordered-containers
+    , ordered-containers
     , transformers
     , mtl
     , mmorph
@@ -125,6 +126,7 @@ test-suite test
     , test-framework
     , test-framework-hunit
     , text
+    , ordered-containers
     , transformers
     , mtl
     , primitive
