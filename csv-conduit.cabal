@@ -118,6 +118,7 @@ test-suite test
   build-depends:
       base >= 4 && < 5
     , bytestring
+    , conduit
     , containers >= 0.3
     , csv-conduit
     , directory
