@@ -67,8 +67,8 @@ import qualified Data.Attoparsec.ByteString.Char8 as A8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
-
 import Data.Int (Int8, Int16, Int32, Int64)
+import Data.Kind (Type)
 import qualified Data.Map as M
 import qualified Data.Map.Ordered as MO
 import Data.Semigroup as Semigroup
@@ -890,7 +890,7 @@ instance FromField a => GFromRecordProd (K1 i a) Record where
     gparseRecordProd n = (n + 1, \v -> K1 <$> parseField (V.unsafeIndex v n))
 
 #if MIN_VERSION_base(4,9,0)
-data Proxy (s :: Meta) (f :: * -> *) a = Proxy
+data Proxy (s :: Meta) (f :: Type -> Type) a = Proxy
 #else
 data Proxy s (f :: * -> *) a = Proxy
 #endif

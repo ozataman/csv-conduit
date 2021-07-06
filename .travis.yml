@@ -9,17 +9,12 @@ language: c
 addons:
   apt:
     packages:
-    - libgmp-dev
+      - libgmp-dev
 
 # The different configurations we want to test. You could also do things like
 # change flags or use --stack-yaml to point to a different file.
 matrix:
   include:
-    - env: ARGS="--resolver=lts-6"
-    - env: ARGS="--resolver=lts-7"
-    - env: ARGS="--resolver=lts-8"
-    - env: ARGS="--resolver=lts-9"
-    - env: ARGS="--resolver=lts-10"
     - env: ARGS="--resolver=lts-11"
     - env: ARGS="--resolver=lts-12"
     - env: ARGS="--resolver=lts-13"
@@ -32,10 +27,10 @@ matrix:
     - env: ARGS="--resolver=nightly"
 
 before_install:
-# Download and unpack the stack executable
-- mkdir -p ~/.local/bin
-- export PATH=$HOME/.local/bin:$PATH
-- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+  # Download and unpack the stack executable
+  - mkdir -p ~/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
 # This line does all of the work: installs GHC if necessary, build the library,
 # executables, and test suites, and runs the test suites. --no-terminal works
@@ -50,5 +45,5 @@ script:
 # Caching so the next build will be fast too.
 cache:
   directories:
-  - $HOME/.stack
-  - .stack-work
+    - $HOME/.stack
+    - .stack-work

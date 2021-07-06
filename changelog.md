@@ -1,3 +1,7 @@
+0.7.3.0
+* Add ordered versions of named records for consistent, controllable header column ordering. [PR 44](https://github.com/ozataman/csv-conduit/pull/44)
+* Add support for GHC 9.0.1
+
 0.7.2.0
 * Remove some dependency upper bounds for forward compatibility.
 
