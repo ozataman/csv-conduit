@@ -53,7 +53,8 @@ type Row a = [a]
 -- 'Map'.
 type MapRow a = M.Map a a
 
--- | An 'OrderedMapRow' is a dictionary based on 'Data.Map.Ordered' where column names
--- are keys and row's individual cell values are the values of the
--- 'OMap'.
+-- | An 'OrderedMapRow' is a dictionary based on 'Data.Map.Ordered' where column
+-- names are keys and row's individual cell values are the values of the 'OMap'.
+-- Unlike 'MapRow', 'OrderedMapRow' preserves the insertion ordering of columns.
+-- 'OrderedMapRow' is a reasonable default in most cases.
 type OrderedMapRow a = MO.OMap a a
