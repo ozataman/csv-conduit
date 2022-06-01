@@ -74,7 +74,6 @@ library
       Data.CSV.Conduit.Parser.Text
   other-modules:
       Data.CSV.Conduit.Conversion.Internal
-      Data.CSV.Conduit.Monoid
   ghc-options: -Wall -funbox-strict-fields -Wunused-packages
   if flag(lib-Werror)
     ghc-options: -Werror

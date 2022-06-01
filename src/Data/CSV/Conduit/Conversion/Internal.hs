@@ -12,8 +12,6 @@ import           Data.Char                      (ord)
 import           Data.Int
 import           Data.Word
 
-import           Data.CSV.Conduit.Monoid        as Monoid ((<>))
-
 ------------------------------------------------------------------------
 -- Integers
 
@@ -46,7 +44,7 @@ formatDecimal :: Integral a => a -> Builder
     :: Word64 -> Builder #-}
 {-# NOINLINE formatDecimal #-}
 formatDecimal i
-    | i < 0     = minus Monoid.<>
+    | i < 0     = minus <>
                   if i <= -128
                   then formatPositive (-(i `quot` 10)) <> digit (-(i `rem` 10))
                   else formatPositive (-i)
