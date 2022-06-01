@@ -1,10 +1,8 @@
 {-# LANGUAGE BangPatterns, CPP, FlexibleInstances, OverloadedStrings,
              Rank2Types #-}
-#ifdef GENERICS
 {-# LANGUAGE DefaultSignatures, TypeOperators, KindSignatures, FlexibleContexts,
              MultiParamTypeClasses, UndecidableInstances, ScopedTypeVariables,
              DataKinds #-}
-#endif
 
 -----------------------------------------------------------------------------
 -- |
@@ -84,10 +82,8 @@ import Data.Word as W
 import GHC.Float (double2Float)
 import Prelude hiding (lookup, takeWhile)
 
-#ifdef GENERICS
 import GHC.Generics
 import qualified Data.IntMap as IM
-#endif
 
 import Data.CSV.Conduit.Conversion.Internal
 
@@ -160,11 +156,8 @@ type Field = B8.ByteString
 -- >         | otherwise     = mzero
 class FromRecord a where
     parseRecord :: Record -> Parser a
-  
-#ifdef GENERICS
     default parseRecord :: (Generic a, GFromRecord (Rep a)) => Record -> Parser a
     parseRecord r = to A.<$> gparseRecord r
-#endif
 
 -- | Haskell lacks a single-element tuple type, so if you CSV data
 -- with just one column you can use the 'Only' type to represent a
@@ -189,11 +182,8 @@ newtype Only a = Only {
 -- > Jane,55
 class ToRecord a where
     toRecord :: a -> Record
-
-#ifdef GENERICS
     default toRecord :: (Generic a, GToRecord (Rep a) Field) => a -> Record
     toRecord = V.fromList . gtoRecord . from
-#endif
 
 instance FromField a => FromRecord (Only a) where
     parseRecord v
@@ -365,11 +355,8 @@ instance (ToField a, U.Unbox a) => ToRecord (U.Vector a) where
 -- enables 'B8.ByteString' values to be written as string literals.
 class FromNamedRecord a where
     parseNamedRecord :: NamedRecord -> Parser a
-
-#ifdef GENERICS
     default parseNamedRecord :: (Generic a, GFromNamedRecord (Rep a)) => NamedRecord -> Parser a
     parseNamedRecord r = to <$> gparseNamedRecord r
-#endif
 
 class FromNamedRecordOrdered a where
     parseNamedRecordOrdered :: NamedRecordOrdered -> Parser a
@@ -385,11 +372,8 @@ class FromNamedRecordOrdered a where
 -- >         "name" .= name, "age" .= age]
 class ToNamedRecord a where
     toNamedRecord :: a -> NamedRecord
-
-#ifdef GENERICS
     default toNamedRecord :: (Generic a, GToRecord (Rep a) (B.ByteString, B.ByteString)) => a -> NamedRecord
     toNamedRecord = namedRecord . gtoRecord . from
-#endif
 
 class ToNamedRecordOrdered a where
     toNamedRecordOrdered :: a -> NamedRecordOrdered
@@ -836,8 +820,6 @@ runParser p = unParser p left right
     right !x = Right x
 {-# INLINE runParser #-}
 
-#ifdef GENERICS
-
 class GFromRecord f where
     gparseRecord :: Record -> Parser (f p)
 
@@ -889,11 +871,7 @@ instance GFromRecordProd f Record => GFromRecordProd (M1 i n f) Record where
 instance FromField a => GFromRecordProd (K1 i a) Record where
     gparseRecordProd n = (n + 1, \v -> K1 <$> parseField (V.unsafeIndex v n))
 
-#if MIN_VERSION_base(4,9,0)
 data Proxy (s :: Meta) (f :: Type -> Type) a = Proxy
-#else
-data Proxy s (f :: * -> *) a = Proxy
-#endif
 
 instance (FromField a, Selector s) => GFromRecordProd (M1 S s (K1 i a)) NamedRecord where
     gparseRecordProd n = (n + 1, \v -> (M1 . K1) <$> v .: name)
@@ -928,5 +906,3 @@ instance ToField a => GToRecord (K1 i a) Field where
 
 instance (ToField a, Selector s) => GToRecord (M1 S s (K1 i a)) (B.ByteString, B.ByteString) where
     gtoRecord m@(M1 (K1 a)) = [T.encodeUtf8 (T.pack (selName m)) .= toField a]
-
-#endif
