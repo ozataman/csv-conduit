@@ -39,8 +39,10 @@ import           Control.Exception
 import           Control.Monad.Catch.Pure           (CatchT)
 import           Control.Monad.Catch.Pure           (runCatchT)
 import           Control.Monad.Except
+import           Control.Monad.IO.Class             (MonadIO (liftIO))
 import           Control.Monad.Primitive
 import           Control.Monad.ST
+import           Control.Monad.Trans.Class          (lift)
 import           Control.Monad.Trans.Resource       (MonadResource, MonadThrow,
                                                      runResourceT)
 import           Data.Attoparsec.Types              (Parser)
