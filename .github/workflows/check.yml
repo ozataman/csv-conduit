@@ -1,0 +1,31 @@
+name: Check
+on:
+  pull_request:
+
+jobs:
+  build:
+      name: Build and Test
+      runs-on: ubuntu-latest
+      steps:
+        - name: Clone project
+          uses: actions/checkout@v2
+
+        - name: Cache dependencies
+          uses: actions/cache@v2
+          with:
+            path: ~/.stack
+            key: ${{ runner.os }}-${{ hashFiles('stack.yaml') }}
+            restore-keys: ${{ runner.os }}-
+
+        - name: Setup GHC
+          run: |
+            stack --version
+            stack setup
+
+        - name: Build sources
+          run: |
+            stack build
+
+        - name: Run tests
+          run: |
+            stack test
