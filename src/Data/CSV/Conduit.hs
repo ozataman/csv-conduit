@@ -155,9 +155,12 @@ instance CSV ByteString (Row ByteString) where
   rowToStr s !r =
     let
       sep = B.pack [c2w (csvSep s)]
-      wrapField !f = case csvQuoteChar s of
-        Just !x-> (x `B8.cons` escape x f) `B8.snoc` x
-        _      -> f
+      wrapField !f = case csvQuoteCharAndStyle s of
+        Just (x, quoteEmpty) ->
+          case quoteEmpty == DoQuoteEmpty || B8.length f /= 0 of
+            True -> (x `B8.cons` escape x f) `B8.snoc` x
+            False -> f
+        Nothing   -> f
       escape c str = B8.intercalate (B8.pack [c,c]) $ B8.split c str
     in B.intercalate sep . map wrapField $ r
 
@@ -171,9 +174,11 @@ instance CSV Text (Row Text) where
   rowToStr s !r =
     let
       sep = T.pack [csvSep s]
-      wrapField !f = case csvQuoteChar s of
-        Just !x-> x `T.cons` escape x f `T.snoc` x
-        _      -> f
+      wrapField !f = case csvQuoteCharAndStyle s of
+        Just (x, quoteEmpty) -> case quoteEmpty == DoQuoteEmpty || not (T.null f) of
+          True -> x `T.cons` escape x f `T.snoc` x
+          False -> f
+        Nothing -> f
       escape c str = T.intercalate (T.pack [c,c]) $ T.split (== c) str
     in T.intercalate sep . map wrapField $ r
 

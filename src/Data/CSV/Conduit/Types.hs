@@ -9,6 +9,7 @@ import qualified Data.Map         as M
 import qualified Data.Map.Ordered as MO
 -------------------------------------------------------------------------------
 
+data QuoteEmpty = DoQuoteEmpty | DontQuoteEmpty deriving (Show, Eq)
 
 -------------------------------------------------------------------------------
 -- | Settings for a CSV file. This library is intended to be flexible
@@ -22,10 +23,12 @@ data CSVSettings = CSVSettings
     -- | Quote character that may sometimes be present around fields.
     -- If 'Nothing' is given, the library will never expect quotation
     -- even if it is present.
-  , csvQuoteChar :: !(Maybe Char)
-  } deriving (Read, Show, Eq)
+  , csvQuoteCharAndStyle :: !(Maybe (Char, QuoteEmpty))
+  } deriving (Show, Eq)
 
 
+csvQuoteChar :: CSVSettings -> Maybe Char
+csvQuoteChar = (fst <$>) . csvQuoteCharAndStyle
 
 -------------------------------------------------------------------------------
 -- | Default settings for a CSV file.
@@ -36,9 +39,14 @@ data CSVSettings = CSVSettings
 defCSVSettings :: CSVSettings
 defCSVSettings = CSVSettings
   { csvSep = ','
-  , csvQuoteChar = Just '"'
+  , csvQuoteCharAndStyle = Just ('"', DoQuoteEmpty)
   }
 
+defDontQuoteEmptyCSVSettings :: CSVSettings
+defDontQuoteEmptyCSVSettings = CSVSettings
+  { csvSep = ','
+  , csvQuoteCharAndStyle = Just ('"', DontQuoteEmpty)
+  }
 
 instance Default CSVSettings where
     def = defCSVSettings
