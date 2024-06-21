@@ -1,4 +1,7 @@
-# README [![Build Status](https://travis-ci.org/ozataman/csv-conduit.svg?branch=master)](https://travis-ci.org/ozataman/csv-conduit)
+# README
+[![cabal
+build](https://github.com/dmvianna/csv-conduit/actions/workflows/cabal.yml/badge.svg)](https://github.com/dmvianna/csv-conduit/actions)
+[![stack build](https://github.com/dmvianna/csv-conduit/actions/workflows/stack.yml/badge.svg)](https://github.com/dmvianna/csv-conduit/actions)
 
 ## CSV Files and Haskell
 
@@ -90,9 +93,9 @@ myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
 myProcessor = CL.map reverse
 
 test :: IO ()
-test = runResourceT $ 
-  transformCSV defCSVSettings 
-               (sourceFile "input.csv") 
+test = runResourceT $
+  transformCSV defCSVSettings
+               (sourceFile "input.csv")
                myProcessor
                (sinkFile "output.csv")
 ```
@@ -113,11 +116,10 @@ myProcessor = awaitForever $ yield
 -- Let's simply stream from a file, parse the CSV, reserialize it
 -- and push back into another file.
 test :: IO ()
-test = runResourceT $ 
-  sourceFile "test/BigFile.csv" $= 
+test = runResourceT $
+  sourceFile "test/BigFile.csv" $=
   intoCSV defCSVSettings $=
   myProcessor $=
   fromCSV defCSVSettings $$
   sinkFile "test/BigFileOut.csv"
 ```
-

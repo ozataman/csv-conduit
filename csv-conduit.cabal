@@ -11,7 +11,16 @@ maintainer:         Daniel Vianna <dmvianna@gmail.com>
 category:           Data, Conduit, CSV, Text
 build-type:         Simple
 cabal-version:      >=1.10
-tested-with:        GHC ==9.6.4
+tested-with:
+  GHC ==8.2.2
+   || ==8.4.4
+   || ==8.6.5
+   || ==8.8.3
+   || ==8.8.4
+   || ==8.10.4
+   || ==9.0.1
+   || ==9.6.4
+
 description:
   CSV files are the de-facto standard in many situations involving data transfer,
   particularly when dealing with enterprise application or disparate database
