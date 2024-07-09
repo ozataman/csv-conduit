@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeSynonymInstances  #-}
 {-# LANGUAGE UndecidableInstances  #-}
 
 module Data.CSV.Conduit
@@ -36,13 +35,12 @@ module Data.CSV.Conduit
 
 -------------------------------------------------------------------------------
 import           Control.Exception
-import           Control.Monad.Catch.Pure           (CatchT)
-import           Control.Monad.Catch.Pure           (runCatchT)
-import           Control.Monad.Except
+import           Control.Monad.Catch.Pure           (runCatchT, CatchT)
 import           Control.Monad.IO.Class             (MonadIO (liftIO))
 import           Control.Monad.Primitive
 import           Control.Monad.ST
-import           Control.Monad.Trans.Class          (lift)
+import           Control.Monad.Trans.Class          (MonadTrans(lift))
+import           Control.Monad.Trans.Except         (ExceptT(..), runExceptT)
 import           Control.Monad.Trans.Resource       (MonadResource, MonadThrow,
                                                      runResourceT)
 import           Data.Attoparsec.Types              (Parser)

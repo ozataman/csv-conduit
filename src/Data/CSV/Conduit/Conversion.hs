@@ -68,7 +68,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
 import Data.Int (Int8, Int16, Int32, Int64)
-import Data.Kind (Type)
 import qualified Data.Map as M
 import qualified Data.Map.Ordered as MO
 import Data.Semigroup as Semigroup
