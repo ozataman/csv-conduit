@@ -1,3 +1,7 @@
+1.0.0.1
+* Removed dependencies: mmorph, monad-control, mtl,
+  unordered-containers, primitive
+
 1.0.0.0
 * Removed `return` from the `Monad` instance for `Parser`, and
   transfered its definition to `pure` in the `Applicative` instance of

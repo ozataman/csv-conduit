@@ -1,5 +1,5 @@
 name:               csv-conduit
-version:            1.0.0.0
+version:            1.0.0.1
 synopsis:
   A flexible, fast, conduit-based CSV parser library for Haskell.
 
@@ -85,36 +85,27 @@ library
   hs-source-dirs:   src
   build-depends:
       array
-    , attoparsec            >=0.10
-    , base                  >=4       && <5
+    , attoparsec          >=0.10
+    , base                >=4       && <5
     , blaze-builder
     , bytestring
-    , conduit               >=1.2.8
+    , conduit             >=1.2.8
     , conduit-extra
-    , containers            >=0.3
+    , containers          >=0.3
     , data-default
-    , exceptions            >=0.3
-    , mmorph
-    , monad-control
-    , mtl
+    , exceptions          >=0.3
     , ordered-containers
     , primitive
-    , resourcet             >=1.1.2.1
-    , semigroups
+    , resourcet           >=1.1.2.1
     , text
     , transformers
-    , unordered-containers
     , vector
-
-  if impl(ghc >=7.2.1)
-    cpp-options:   -DGENERICS
-    build-depends: ghc-prim >=0.2
 
 test-suite test
   default-language: Haskell2010
   type:             exitcode-stdio-1.0
   main-is:          Test.hs
-  ghc-options:      -Wall
+  ghc-options:      -Wall -Wunused-packages
 
   if flag(lib-werror)
     ghc-options: -Werror
@@ -128,13 +119,10 @@ test-suite test
     , csv-conduit
     , directory
     , HUnit                 >=1.2
-    , mtl
     , ordered-containers
-    , primitive
     , test-framework
     , test-framework-hunit
     , text
-    , transformers
     , vector
 
 source-repository head
