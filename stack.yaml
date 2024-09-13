@@ -1,8 +1,6 @@
-resolver: lts-22.20
+resolver: lts-22.34
 packages:
   - .
-extra-deps:
-  - ordered-containers-0.2.2@sha256:ebf2be3f592d9cf148ea6b8375f8af97148d44f82d8d04476899285e965afdbf,810
 flags:
   csv-conduit:
     lib-Werror: true
