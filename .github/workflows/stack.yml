@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         resolver:
-          - "lts-22.20"
+          - "lts-22.34"
           - "lts-21.25"
           - "lts-20.26"
           - "lts-19.33"
