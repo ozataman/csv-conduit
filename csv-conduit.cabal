@@ -57,6 +57,7 @@ description:
 extra-source-files:
   changelog.md
   README.md
+  test/test-mac-excel.csv
   test/test.csv
   test/Test.hs
 
