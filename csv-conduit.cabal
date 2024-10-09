@@ -60,6 +60,7 @@ extra-source-files:
   test/test-mac-excel.csv
   test/test.csv
   test/Test.hs
+  test/test.xls
 
 flag lib-Werror
   default: False

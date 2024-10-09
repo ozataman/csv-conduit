@@ -59,7 +59,7 @@ row :: CSVSettings -> Parser (Maybe (Row ByteString))
 row csvs = csvrow csvs <|> badrow
 
 csvEndOfLine :: Parser ()
-csvEndOfLine = (word8 10 >> return ()) <|> (C8.string (B8.pack "\r\n") >> return ()) <|> (word8 13 >> return ())
+csvEndOfLine = (word8 10 >> return ()) <|> (word8 13 >> return ())
 
 badrow :: Parser (Maybe (Row ByteString))
 badrow = P.takeWhile (not . C8.isEndOfLine) *>
@@ -95,5 +95,3 @@ quotedField c =
   f <- many (C8.notChar c <|> quoted)
   _ <- C8.char c
   return $ B8.pack f
-
-

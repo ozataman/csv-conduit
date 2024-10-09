@@ -34,6 +34,7 @@ baseTests =
   [ testCase "mapping with id works" test_identityMap,
     testCase "simple parsing works" (test_simpleParse testFile1),
     testCase "simple parsing works for Mac-Excel" (test_simpleParse testFile3),
+    testCase "fails parsing gracefully" test_parseFail,
     testCase "OrderedMap" test_orderedMap
   ]
 
@@ -86,6 +87,20 @@ test_simpleParse fp = do
         v2 = readBS $ r Map.! "Col3"
         v3 = readBS $ r Map.! "Sum"
 
+test_parseFail :: IO ()
+test_parseFail = do
+  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings testXLS
+  errored <- catch (V.mapM_ assertRow d >> pure False) handler
+  if errored then pure () else assertFailure "readCSVFile shouldn't read XLS"
+  where
+    handler :: ErrorCall -> IO Bool
+    handler _ = pure True
+    assertRow r = v3 @=? (v1 + v2)
+      where
+        v1 = readBS $ r Map.! "Col2"
+        v2 = readBS $ r Map.! "Col3"
+        v3 = readBS $ r Map.! "Sum"
+
 test_orderedMap :: IO ()
 test_orderedMap = do
   unorderedRes <-
@@ -114,6 +129,9 @@ testFile1, testFile2, testFile3 :: FilePath
 testFile1 = "test/test.csv"
 testFile2 = "test/test.csv"
 testFile3 = "test/test-mac-excel.csv"
+
+testXLS :: FilePath
+testXLS = "test/test.xls"
 
 readBS :: B.ByteString -> Int
 readBS = read . B.unpack
