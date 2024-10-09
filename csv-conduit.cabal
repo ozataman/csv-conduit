@@ -1,5 +1,5 @@
 name:               csv-conduit
-version:            1.0.0.1
+version:            1.0.0.2
 synopsis:
   A flexible, fast, conduit-based CSV parser library for Haskell.
 
