@@ -28,11 +28,15 @@ module Data.CSV.Conduit.Conversion
     -- * Type conversion
       Only(..)
     , Named (..)
+    , NamedOrdered (..)
     , Record
     , NamedRecord
+    , NamedRecordOrdered
     , FromRecord(..)
     , FromNamedRecord(..)
+    , FromNamedRecordOrdered(..)
     , ToNamedRecord(..)
+    , ToNamedRecordOrdered(..)
     , FromField(..)
     , ToRecord(..)
     , ToField(..)
@@ -47,11 +51,13 @@ module Data.CSV.Conduit.Conversion
     , (.!)
     , unsafeIndex
     , lookup
+    , lookupOrdered
     , (.:)
     , namedField
     , (.=)
     , record
     , namedRecord
+    , namedRecordOrdered
     ) where
 
 import Control.Applicative as A
@@ -61,9 +67,9 @@ import qualified Data.Attoparsec.ByteString.Char8 as A8
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as L
-
 import Data.Int (Int8, Int16, Int32, Int64)
 import qualified Data.Map as M
+import qualified Data.Map.Ordered as MO
 import Data.Semigroup as Semigroup
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
@@ -107,6 +113,7 @@ fromStrict = L.fromChunks . (:[])
 
 -- | A shorthand for the ByteString case of 'MapRow'
 type NamedRecord = M.Map B8.ByteString B8.ByteString
+type NamedRecordOrdered = MO.OMap B8.ByteString B8.ByteString
 
 
 -- | A wrapper around custom haskell types that can directly be
@@ -116,6 +123,7 @@ type NamedRecord = M.Map B8.ByteString B8.ByteString
 -- about overlapping instances. Just use 'getNamed' to get your
 -- object out of the wrapper.
 newtype Named a = Named { getNamed :: a } deriving (Eq,Show,Read,Ord)
+newtype NamedOrdered a = NamedOrdered { getNamedOrdered :: a } deriving (Eq,Show,Read,Ord)
 
 -- | A record corresponds to a single line in a CSV file.
 type Record = Vector B8.ByteString
@@ -151,7 +159,7 @@ type Field = B8.ByteString
 -- >         | otherwise     = mzero
 class FromRecord a where
     parseRecord :: Record -> Parser a
-  
+
 #ifdef GENERICS
     default parseRecord :: (Generic a, GFromRecord (Rep a)) => Record -> Parser a
     parseRecord r = to A.<$> gparseRecord r
@@ -362,6 +370,9 @@ class FromNamedRecord a where
     parseNamedRecord r = to <$> gparseNamedRecord r
 #endif
 
+class FromNamedRecordOrdered a where
+    parseNamedRecordOrdered :: NamedRecordOrdered -> Parser a
+
 -- | A type that can be converted to a single CSV record.
 --
 -- An example type and instance:
@@ -379,11 +390,20 @@ class ToNamedRecord a where
     toNamedRecord = namedRecord . gtoRecord . from
 #endif
 
+class ToNamedRecordOrdered a where
+    toNamedRecordOrdered :: a -> NamedRecordOrdered
+
 instance FromField a => FromNamedRecord (M.Map B.ByteString a) where
     parseNamedRecord m = traverse parseField m
 
+instance FromField a => FromNamedRecordOrdered (MO.OMap B.ByteString a) where
+    parseNamedRecordOrdered m = traverse parseField m
+
 instance ToField a => ToNamedRecord (M.Map B.ByteString a) where
     toNamedRecord = M.map toField
+
+instance ToField a => ToNamedRecordOrdered (MO.OMap B.ByteString a) where
+    toNamedRecordOrdered a = MO.fromList $ map (fmap toField) $ MO.assocs a
 
 -- instance FromField a => FromNamedRecord (HM.HashMap B.ByteString a) where
 --     parseNamedRecord m = traverse (\ s -> parseField s) m
@@ -700,6 +720,11 @@ lookup m name = maybe (fail err) parseField $ M.lookup name m
   where err = "no field named " ++ show (B8.unpack name)
 {-# INLINE lookup #-}
 
+lookupOrdered :: FromField a => NamedRecordOrdered -> B.ByteString -> Parser a
+lookupOrdered m name = maybe (fail err) parseField $ MO.lookup name m
+  where err = "no field named " ++ show (B8.unpack name)
+{-# INLINE lookupOrdered #-}
+
 -- | Alias for 'lookup'.
 (.:) :: FromField a => NamedRecord -> B.ByteString -> Parser a
 (.:) = lookup
@@ -726,6 +751,9 @@ record = V.fromList
 namedRecord :: [(B.ByteString, B.ByteString)] -> NamedRecord
 namedRecord = M.fromList
 
+namedRecordOrdered :: [(B.ByteString, B.ByteString)] -> NamedRecordOrdered
+namedRecordOrdered = MO.fromList
+
 ------------------------------------------------------------------------
 -- Parser for converting records to data types
 
@@ -749,8 +777,6 @@ instance Monad Parser where
     m >>= g = Parser $ \kf ks -> let ks' a = unParser (g a) kf ks
                                  in unParser m kf ks'
     {-# INLINE (>>=) #-}
-    return a = Parser $ \_kf ks -> ks a
-    {-# INLINE return #-}
 
 #if MIN_VERSION_base(4,13,0)
 instance MonadFail Parser where
@@ -765,10 +791,11 @@ instance Functor Parser where
     {-# INLINE fmap #-}
 
 instance Applicative Parser where
-    pure  = return
-    {-# INLINE pure #-}
+
     (<*>) = apP
     {-# INLINE (<*>) #-}
+    pure a = Parser $ \_kf ks -> ks a
+    {-# INLINE pure #-}
 
 instance Alternative Parser where
     empty = fail "empty"
@@ -813,9 +840,9 @@ class GFromRecord f where
     gparseRecord :: Record -> Parser (f p)
 
 instance GFromRecordSum f Record => GFromRecord (M1 i n f) where
-    gparseRecord v = 
+    gparseRecord v =
         case (IM.lookup n gparseRecordSum) of
-            Nothing -> lengthMismatch n v 
+            Nothing -> lengthMismatch n v
             Just p -> M1 <$> p v
       where
         n = V.length v
@@ -824,15 +851,15 @@ class GFromNamedRecord f where
     gparseNamedRecord :: NamedRecord -> Parser (f p)
 
 instance GFromRecordSum f NamedRecord => GFromNamedRecord (M1 i n f) where
-    gparseNamedRecord v = 
+    gparseNamedRecord v =
         foldr (\f p -> p <|> M1 <$> f v) empty (IM.elems gparseRecordSum)
 
 class GFromRecordSum f r where
     gparseRecordSum :: IM.IntMap (r -> Parser (f p))
 
 instance (GFromRecordSum a r, GFromRecordSum b r) => GFromRecordSum (a :+: b) r where
-    gparseRecordSum = 
-        IM.unionWith (\a b r -> a r <|> b r) 
+    gparseRecordSum =
+        IM.unionWith (\a b r -> a r <|> b r)
             (fmap (L1 <$>) <$> gparseRecordSum)
             (fmap (R1 <$>) <$> gparseRecordSum)
 
@@ -861,7 +888,7 @@ instance FromField a => GFromRecordProd (K1 i a) Record where
     gparseRecordProd n = (n + 1, \v -> K1 <$> parseField (V.unsafeIndex v n))
 
 #if MIN_VERSION_base(4,9,0)
-data Proxy (s :: Meta) (f :: * -> *) a = Proxy
+data Proxy (s :: Meta) (f :: Type -> Type) a = Proxy
 #else
 data Proxy s (f :: * -> *) a = Proxy
 #endif

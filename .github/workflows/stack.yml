@@ -1,0 +1,37 @@
+name: stack
+on:
+  - push
+  - pull_request
+
+jobs:
+  linux:
+    name: ${{ matrix.resolver }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        resolver:
+          - "lts-22.34"
+          - "lts-21.25"
+          - "lts-20.26"
+          - "lts-19.33"
+          - "lts-18.28"
+    steps:
+      - name: Clone project
+        uses: actions/checkout@v4
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.stack
+          key: ${{ runner.os }}-${{ matrix.resolver }}-${{ hashFiles('stack.yaml') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.resolver }}
+
+      - name: Build and run tests
+        shell: bash
+        run: |
+          set -ex
+          stack --version
+          stack test --fast --no-terminal --resolver ${{ matrix.resolver }}

@@ -1,27 +1,34 @@
-Name:                csv-conduit
-Version:             0.8
-Synopsis:            A flexible, fast, conduit-based CSV parser library for Haskell.
-Homepage:            http://github.com/ozataman/csv-conduit
-License:             BSD3
-License-file:        LICENSE
-Author:              Ozgun Ataman
-Maintainer:          Ozgun Ataman <ozataman@gmail.com>
-Category:            Data, Conduit, CSV, Text
-Build-type:          Simple
-Cabal-version:       >= 1.9.2
-Tested-with:         GHC == 7.6.1, GHC == 8.6.5
-Description:
+name:               csv-conduit
+version:            1.0.0.2
+synopsis:
+  A flexible, fast, conduit-based CSV parser library for Haskell.
+
+homepage:           http://github.com/dmvianna/csv-conduit
+license:            BSD3
+license-file:       LICENSE
+author:             Ozgun Ataman
+maintainer:         Daniel Vianna <dmvianna@gmail.com>
+category:           Data, Conduit, CSV, Text
+build-type:         Simple
+cabal-version:      >=1.10
+tested-with:
+  GHC ==8.2.2
+   || ==8.4.4
+   || ==8.6.5
+   || ==8.8.3
+   || ==8.8.4
+   || ==8.10.4
+   || ==9.0.1
+   || ==9.6.4
+
+description:
   CSV files are the de-facto standard in many situations involving data transfer,
   particularly when dealing with enterprise application or disparate database
   systems.
-
   .
-
   While there are a number of CSV libraries in Haskell, at the time of this
   project's start in 2010, there wasn't one that provided all of the following:
-
   .
-
   * Full flexibility in quote characters, separators, input/output
   .
   * Constant space operation
@@ -32,100 +39,92 @@ Description:
   .
   * Fast operation
   .
-
   This library is an attempt to close these gaps. Please note that
   this library started its life based on the enumerator package and
   has recently been ported to work with conduits instead. In the
   process, it has been greatly simplified thanks to the modular nature
   of the conduits library.
-
   .
-
   Following the port to conduits, the library has also gained the
   ability to parameterize on the stream type and work both with
   ByteString and Text.
-
   .
-
   For more documentation and examples, check out the README at:
   .
-
-  <http://github.com/ozataman/csv-conduit>
+  <http://github.com/dmvianna/csv-conduit>
   .
 
-
 extra-source-files:
-  README.md
   changelog.md
+  README.md
+  test/test-mac-excel.csv
   test/test.csv
   test/Test.hs
 
 flag lib-Werror
   default: False
-  manual: True
+  manual:  True
 
 library
+  default-language: Haskell2010
   exposed-modules:
-      Data.CSV.Conduit
-      Data.CSV.Conduit.Types
-      Data.CSV.Conduit.Conversion
-      Data.CSV.Conduit.Parser.ByteString
-      Data.CSV.Conduit.Parser.Text
+    Data.CSV.Conduit
+    Data.CSV.Conduit.Conversion
+    Data.CSV.Conduit.Parser.ByteString
+    Data.CSV.Conduit.Parser.Text
+    Data.CSV.Conduit.Types
+
   other-modules:
-      Data.CSV.Conduit.Conversion.Internal
-      Data.CSV.Conduit.Monoid
-  ghc-options: -Wall -funbox-strict-fields
-  if flag(lib-Werror)
+    Data.CSV.Conduit.Conversion.Internal
+    Data.CSV.Conduit.Monoid
+
+  ghc-options:      -Wall -funbox-strict-fields
+
+  if flag(lib-werror)
     ghc-options: -Werror
-  hs-source-dirs: src
+
+  hs-source-dirs:   src
   build-depends:
-      attoparsec             >= 0.10
-    , base                   >= 4 && < 5
-    , bytestring
-    , conduit                >= 1.3.0 && < 2.0
-    , conduit-extra
-    , containers             >= 0.3
-    , exceptions             >= 0.3
-    , monad-control
-    , text
-    , vector
-    , array
+      array
+    , attoparsec          >=0.10
+    , base                >=4       && <5
     , blaze-builder
-    , unordered-containers
-    , transformers
-    , mtl
-    , mmorph
+    , bytestring
+    , conduit             >=1.3.0   && <2.0
+    , conduit-extra
+    , containers          >=0.3
+    , data-default
+    , exceptions          >=0.3
+    , ordered-containers
     , primitive
-    , resourcet              >= 1.1.2.1
-    , semigroups
-
-  if impl(ghc >= 7.2.1)
-    cpp-options: -DGENERICS
-    build-depends: ghc-prim >= 0.2 && < 0.6
-
+    , resourcet           >=1.1.2.1
+    , text
+    , transformers
+    , vector
 
 test-suite test
-  type: exitcode-stdio-1.0
-  main-is: Test.hs
-  ghc-options: -Wall
-  if flag(lib-Werror)
+  default-language: Haskell2010
+  type:             exitcode-stdio-1.0
+  main-is:          Test.hs
+  ghc-options:      -Wall -Wunused-packages
+
+  if flag(lib-werror)
     ghc-options: -Werror
-  hs-source-dirs: test
+
+  hs-source-dirs:   test
   build-depends:
-      base >= 4 && < 5
+      base                  >=4     && <5
     , bytestring
-    , containers >= 0.3
+    , conduit               >=1.3.0
+    , containers            >=0.3
     , csv-conduit
     , directory
-    , vector
-    , HUnit >= 1.2
+    , HUnit                 >=1.2
+    , ordered-containers
     , test-framework
     , test-framework-hunit
     , text
-    , transformers
-    , mtl
-    , primitive
-
+    , vector
 
 source-repository head
   type:     git
