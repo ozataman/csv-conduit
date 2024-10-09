@@ -1,3 +1,8 @@
+1.0.0.2
+* Fixed [#17](https://github.com/ozataman/csv-conduit/issues/17),
+  where CSV created with Excel in Mac OS failed to parse due to its
+  newline characters.
+
 1.0.0.1
 * Removed dependencies: mmorph, monad-control, mtl,
   unordered-containers, primitive
