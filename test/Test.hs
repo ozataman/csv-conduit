@@ -32,7 +32,8 @@ tests =
 baseTests :: [Test]
 baseTests =
   [ testCase "mapping with id works" test_identityMap,
-    testCase "simple parsing works" test_simpleParse,
+    testCase "simple parsing works" (test_simpleParse testFile1),
+    testCase "simple parsing works for Mac-Excel" (test_simpleParse testFile3),
     testCase "OrderedMap" test_orderedMap
   ]
 
@@ -74,9 +75,9 @@ test_identityMap = do
     f :: Row Text -> [Row Text]
     f = return
 
-test_simpleParse :: IO ()
-test_simpleParse = do
-  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings testFile1
+test_simpleParse :: FilePath -> IO ()
+test_simpleParse fp = do
+  (d :: V.Vector (MapRow B.ByteString)) <- readCSVFile csvSettings fp
   V.mapM_ assertRow d
   where
     assertRow r = v3 @=? (v1 + v2)
@@ -109,9 +110,10 @@ test_orderedMap = do
 csvSettings :: CSVSettings
 csvSettings = defCSVSettings {csvQuoteCharAndStyle = Just ('`', DontQuoteEmpty)}
 
-testFile1, testFile2 :: FilePath
+testFile1, testFile2, testFile3 :: FilePath
 testFile1 = "test/test.csv"
 testFile2 = "test/test.csv"
+testFile3 = "test/test-mac-excel.csv"
 
 readBS :: B.ByteString -> Int
 readBS = read . B.unpack
