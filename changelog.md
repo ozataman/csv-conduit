@@ -1,3 +1,6 @@
+1.0.1.0
+* Use ConduitT instead of ConduitM (prettier type inference with newer conduit imports)
+
 1.0.0.2
 * Fixed [#17](https://github.com/ozataman/csv-conduit/issues/17),
   where CSV created with Excel in Mac OS failed to parse due to its

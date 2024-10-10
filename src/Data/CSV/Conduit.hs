@@ -135,13 +135,13 @@ class CSV s r where
   -----------------------------------------------------------------------------
   -- | Turn a stream of 's' into a stream of CSV row type. An example
   -- would be parsing a ByteString stream as rows of 'MapRow' 'Text'.
-  intoCSV :: (MonadThrow m) => CSVSettings -> ConduitM s r m ()
+  intoCSV :: (MonadThrow m) => CSVSettings -> ConduitT s r m ()
 
   -----------------------------------------------------------------------------
   -- | Turn a stream of CSV row type back into a stream of 's'. An
   -- example would be rendering a stream of 'Row' 'ByteString' rows as
   -- 'Text'.
-  fromCSV :: Monad m => CSVSettings -> ConduitM r s m ()
+  fromCSV :: Monad m => CSVSettings -> ConduitT r s m ()
 
 
 
@@ -213,13 +213,13 @@ instance (CSV s (Row s)) => CSV s (V.Vector s) where
 
 -------------------------------------------------------------------------------
 fromCSVRow :: (Monad m, IsString s, CSV s r)
-           => CSVSettings -> ConduitM r s m ()
+           => CSVSettings -> ConduitT r s m ()
 fromCSVRow set = awaitForever $ \row -> mapM_ yield [rowToStr set row, "\n"]
 
 
 
 -------------------------------------------------------------------------------
-intoCSVRow :: (MonadThrow m, AttoparsecInput i) => Parser i (Maybe o) -> ConduitM i o m ()
+intoCSVRow :: (MonadThrow m, AttoparsecInput i) => Parser i (Maybe o) -> ConduitT i o m ()
 intoCSVRow p = parse .| puller
   where
     parse = {-# SCC "conduitParser_p" #-} conduitParser p
@@ -243,7 +243,7 @@ instance (CSV s (Row s'), Ord s', IsString s) => CSV s (OrderedMapRow s') where
 
 -------------------------------------------------------------------------------
 intoCSVMap :: (Ord a, MonadThrow m, CSV s [a])
-           => CSVSettings -> ConduitM s (MapRow a) m ()
+           => CSVSettings -> ConduitT s (MapRow a) m ()
 intoCSVMap set = intoCSV set .| (headers >>= converter)
   where
     headers = do
@@ -298,7 +298,7 @@ instance (FromNamedRecordOrdered a, ToNamedRecordOrdered a, CSV s (OrderedMapRow
 
 -------------------------------------------------------------------------------
 fromCSVMap :: (Monad m, IsString s, CSV s [a])
-           => CSVSettings -> ConduitM (M.Map k a) s m ()
+           => CSVSettings -> ConduitT (M.Map k a) s m ()
 fromCSVMap set = awaitForever push
   where
     push r = mapM_ yield [rowToStr set (M.elems r), "\n"]
@@ -321,7 +321,7 @@ fromCSVMapOrdered set = awaitForever push
 writeHeaders
     :: (Monad m, CSV s (Row r), IsString s)
     => CSVSettings
-    -> ConduitM (MapRow r) s m ()
+    -> ConduitT (MapRow r) s m ()
 writeHeaders set = do
   mrow <- await
   case mrow of
@@ -380,14 +380,14 @@ decodeCSV
     -> Either SomeException (v a)
 decodeCSV set bs = runST $ runExceptT pipeline
   where
-    src :: ConduitM () s (ExceptT SomeException (ST s1)) ()
+    src :: ConduitT () s (ExceptT SomeException (ST s1)) ()
     src = C.sourceList [bs]
-    csvConvert :: ConduitM s a (ExceptT SomeException (ST s1)) ()
+    csvConvert :: ConduitT s a (ExceptT SomeException (ST s1)) ()
     csvConvert = transPipe (ExceptT . runCatchT) csvConvert'
-    csvConvert' :: ConduitM s a (CatchT (ST s1)) ()
+    csvConvert' :: ConduitT s a (CatchT (ST s1)) ()
     csvConvert' = intoCSV set
     growthFactor = 10
-    sink :: ConduitM a Void.Void (ExceptT SomeException (ST s1)) (v a)
+    sink :: ConduitT a Void.Void (ExceptT SomeException (ST s1)) (v a)
     sink = sinkVector growthFactor
     pipeline :: ExceptT SomeException (ST s1) (v a)
     pipeline = runConduit (src .| csvConvert .| sink)
@@ -447,11 +447,11 @@ transformCSV
     :: (MonadThrow m, CSV s a, CSV s' b)
     => CSVSettings
     -- ^ Settings to be used for both input and output
-    -> ConduitM () s m ()
+    -> ConduitT () s m ()
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
-    -> ConduitM a b m ()
+    -> ConduitT a b m ()
     -- ^ A transforming conduit
-    -> ConduitM s' Void.Void m ()
+    -> ConduitT s' Void.Void m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
 transformCSV set = transformCSV' set set
@@ -475,11 +475,11 @@ transformCSV'
     -- ^ Settings to be used for input
     -> CSVSettings
     -- ^ Settings to be used for output
-    -> ConduitM () s m ()
+    -> ConduitT () s m ()
     -- ^ A raw stream data source. Ex: 'sourceFile inFile'
-    -> ConduitM a b m ()
+    -> ConduitT a b m ()
     -- ^ A transforming conduit
-    -> ConduitM s' Void.Void m ()
+    -> ConduitT s' Void.Void m ()
     -- ^ A raw stream data sink. Ex: 'sinkFile outFile'
     -> m ()
 transformCSV' setIn setOut source c sink = runConduit $
@@ -500,7 +500,7 @@ transformCSV' setIn setOut source c sink = runConduit $
 
 -------------------------------------------------------------------------------
 -- | An efficient sink that incrementally grows a vector from the input stream
-sinkVector :: (PrimMonad m, GV.Vector v a) => Int -> ConduitM a o m (v a)
+sinkVector :: (PrimMonad m, GV.Vector v a) => Int -> ConduitT a o m (v a)
 sinkVector by = do
     v <- lift $ GMV.new by
     go 0 v
