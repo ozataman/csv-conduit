@@ -34,6 +34,7 @@ baseTests =
   [ testCase "mapping with id works" test_identityMap,
     testCase "simple parsing works" (test_simpleParse testFile1),
     testCase "simple parsing works for Mac-Excel" (test_simpleParse testFile3),
+    testCase "simple parsing works for Windows-Excel" (test_simpleParse testFile4),
     testCase "fails parsing gracefully" test_parseFail,
     testCase "OrderedMap" test_orderedMap
   ]
@@ -125,10 +126,11 @@ test_orderedMap = do
 csvSettings :: CSVSettings
 csvSettings = defCSVSettings {csvQuoteCharAndStyle = Just ('`', DontQuoteEmpty)}
 
-testFile1, testFile2, testFile3 :: FilePath
+testFile1, testFile2, testFile3, testFile4 :: FilePath
 testFile1 = "test/test.csv"
 testFile2 = "test/test.csv"
 testFile3 = "test/test-mac-excel.csv"
+testFile4 = "test/test-windows-excel.csv"
 
 testXLS :: FilePath
 testXLS = "test/test.xls"

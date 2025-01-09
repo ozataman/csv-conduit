@@ -59,7 +59,7 @@ row :: CSVSettings -> Parser (Maybe (Row ByteString))
 row csvs = csvrow csvs <|> badrow
 
 csvEndOfLine :: Parser ()
-csvEndOfLine = (word8 10 >> return ()) <|> (word8 13 >> return ())
+csvEndOfLine = (word8 10 >> return ()) <|> ((word8 13 *> word8 10) >> return ()) <|> (word8 13 >> return ())
 
 badrow :: Parser (Maybe (Row ByteString))
 badrow = P.takeWhile (not . C8.isEndOfLine) *>
