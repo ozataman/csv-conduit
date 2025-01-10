@@ -58,6 +58,7 @@ extra-source-files:
   changelog.md
   README.md
   test/test-mac-excel.csv
+  test/test-windows-excel.csv
   test/test.csv
   test/Test.hs
   test/test.xls
