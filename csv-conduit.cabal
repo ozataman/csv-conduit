@@ -3,7 +3,7 @@ version:            1.0.1.0
 synopsis:
   A flexible, fast, conduit-based CSV parser library for Haskell.
 
-homepage:           http://github.com/dmvianna/csv-conduit
+homepage:           http://github.com/ozataman/csv-conduit
 license:            BSD3
 license-file:       LICENSE
 author:             Ozgun Ataman
@@ -51,7 +51,7 @@ description:
   .
   For more documentation and examples, check out the README at:
   .
-  <http://github.com/dmvianna/csv-conduit>
+  <http://github.com/ozataman/csv-conduit>
   .
 
 extra-source-files:
