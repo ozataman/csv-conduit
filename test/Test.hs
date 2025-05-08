@@ -13,7 +13,7 @@ import Data.CSV.Conduit.Types
 import qualified Data.Map as Map
 import qualified Data.Map.Ordered as OMap
 import Data.Monoid as M
-import Data.Text
+import Data.Text (Text)
 import qualified Data.Vector as V
 import System.Directory
 import Test.Framework (Test, defaultMain, testGroup)
