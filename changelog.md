@@ -1,3 +1,6 @@
+1.0.1.1
+* Fix test suite to build with text 2.1.2 and ghc 9.12.2, resolving [#62](https://github.com/ozataman/csv-conduit/issues/62)
+
 1.0.1.0
 * Use ConduitT instead of ConduitM (prettier type inference with newer conduit imports)
 
