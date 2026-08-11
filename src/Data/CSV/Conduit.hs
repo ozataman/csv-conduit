@@ -96,14 +96,13 @@ import           Data.CSV.Conduit.Types
 --
 -- Example #1: Basics Using Convenience API
 --
--- >import Data.Conduit
--- >import Data.Conduit.Binary
--- >import Data.Conduit.List as CL
+-- >import Conduit
 -- >import Data.CSV.Conduit
+-- >import Data.Text (Text)
 -- >
--- >myProcessor :: Conduit (Row Text) m (Row Text)
--- >myProcessor = CL.map reverse
--- >
+-- >myProcessor :: Monad m => ConduitT (Row Text) (Row Text) m ()
+-- >myProcessor = mapC reverse
+-- >test :: IO ()
 -- >test = runResourceT $
 -- >  transformCSV defCSVSettings
 -- >               (sourceFile "input.csv")
@@ -113,14 +112,15 @@ import           Data.CSV.Conduit.Types
 --
 -- Example #2: Basics Using Conduit API
 --
--- >import Data.Conduit
--- >import Data.Conduit.Binary
+-- >import Conduit
 -- >import Data.CSV.Conduit
+-- >import Data.Text (Text)
 -- >
--- >myProcessor :: Conduit (MapRow Text) m (MapRow Text)
+-- >myProcessor :: Monad m => ConduitT (MapRow Text) (MapRow Text) m ()
 -- >myProcessor = undefined
 -- >
--- >test = runResourceT $ runConduit $
+-- >test :: IO ()
+-- >test = runConduitRes $
 -- >  sourceFile "test/BigFile.csv" .|
 -- >  intoCSV defCSVSettings .|
 -- >  myProcessor .|
