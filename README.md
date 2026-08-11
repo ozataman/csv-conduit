@@ -80,17 +80,13 @@ regressions or optimization opportunities.
 #### Example #1: Basics Using Convenience API
 
 ```haskell
-{-# LANGUAGE OverloadedStrings #-}
-
-import Data.Conduit
-import Data.Conduit.Binary
-import Data.Conduit.List as CL
+import Conduit
 import Data.CSV.Conduit
 import Data.Text (Text)
 
--- Just reverse te columns
-myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
-myProcessor = CL.map reverse
+-- Just reverse the columns
+myProcessor :: Monad m => ConduitT (Row Text) (Row Text) m ()
+myProcessor = mapC reverse
 
 test :: IO ()
 test = runResourceT $
@@ -103,23 +99,20 @@ test = runResourceT $
 #### Example #2: Basics Using Conduit API
 
 ```haskell
-{-# LANGUAGE OverloadedStrings #-}
-
-import Data.Conduit
-import Data.Conduit.Binary
+import Conduit
 import Data.CSV.Conduit
 import Data.Text (Text)
 
-myProcessor :: Monad m => Conduit (Row Text) m (Row Text)
-myProcessor = awaitForever $ yield
+myProcessor :: Monad m => ConduitT (MapRow Text) (MapRow Text) m ()
+myProcessor = undefined
 
 -- Let's simply stream from a file, parse the CSV, reserialize it
 -- and push back into another file.
 test :: IO ()
-test = runResourceT $
-  sourceFile "test/BigFile.csv" $=
-  intoCSV defCSVSettings $=
-  myProcessor $=
-  fromCSV defCSVSettings $$
+test = runConduitRes $
+  sourceFile "test/BigFile.csv" .|
+  intoCSV defCSVSettings .|
+  myProcessor .|
+  (writeHeaders defCSVSettings >> fromCSV defCSVSettings) .|
   sinkFile "test/BigFileOut.csv"
 ```
