@@ -16,7 +16,7 @@ jobs:
     outputs:
       run-tests: ${{ steps.scope.outputs.run-tests }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Determine whether tests are required
@@ -38,26 +38,25 @@ jobs:
     if: needs.scope.outputs.run-tests == 'true'
     uses: ./.github/workflows/stack.yml
 
-  ci-gate:
-    name: ci-gate
+  cabal-status:
+    name: cabal build
     if: always()
     needs:
       - scope
       - cabal
-      - stack
     runs-on: ubuntu-24.04
     steps:
-      - name: Enforce the applicable test results
+      - name: Report the applicable Cabal result
         run: |
           set -euo pipefail
 
           if [[ "${{ needs.scope.result }}" != "success" ]]; then
-            echo "Unable to determine whether this change requires tests."
+            echo "Unable to determine whether this change requires Cabal tests."
             exit 1
           fi
 
           if [[ "${{ needs.scope.outputs.run-tests }}" == "false" ]]; then
-            echo "Documentation-only change: Stack and Cabal tests are not required."
+            echo "Documentation-only change: Cabal tests are not required."
             exit 0
           fi
 
@@ -66,9 +65,57 @@ jobs:
             exit 1
           fi
 
+          echo "Cabal matrix passed."
+
+  stack-status:
+    name: stack build
+    if: always()
+    needs:
+      - scope
+      - stack
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Report the applicable Stack result
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ needs.scope.result }}" != "success" ]]; then
+            echo "Unable to determine whether this change requires Stack tests."
+            exit 1
+          fi
+
+          if [[ "${{ needs.scope.outputs.run-tests }}" == "false" ]]; then
+            echo "Documentation-only change: Stack tests are not required."
+            exit 0
+          fi
+
           if [[ "${{ needs.stack.result }}" != "success" ]]; then
             echo "Stack matrix result: ${{ needs.stack.result }}"
             exit 1
           fi
 
-          echo "Stack and Cabal matrices passed."
+          echo "Stack matrix passed."
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs:
+      - cabal-status
+      - stack-status
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce the applicable test results
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ needs.cabal-status.result }}" != "success" ]]; then
+            echo "Cabal status result: ${{ needs.cabal-status.result }}"
+            exit 1
+          fi
+
+          if [[ "${{ needs.stack-status.result }}" != "success" ]]; then
+            echo "Stack status result: ${{ needs.stack-status.result }}"
+            exit 1
+          fi
+
+          echo "The applicable Stack and Cabal checks passed."
