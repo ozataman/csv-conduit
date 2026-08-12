@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scope:
+    name: determine test scope
+    runs-on: ubuntu-24.04
+    outputs:
+      run-tests: ${{ steps.scope.outputs.run-tests }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Determine whether tests are required
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: scripts/ci-scope.sh "$BASE_SHA" "$HEAD_SHA" >> "$GITHUB_OUTPUT"
+      - name: Test scope classifier
+        run: scripts/ci-scope-test.sh
+
+  cabal:
+    needs: scope
+    if: needs.scope.outputs.run-tests == 'true'
+    uses: ./.github/workflows/cabal.yml
+
+  stack:
+    needs: scope
+    if: needs.scope.outputs.run-tests == 'true'
+    uses: ./.github/workflows/stack.yml
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs:
+      - scope
+      - cabal
+      - stack
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Enforce the applicable test results
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ needs.scope.result }}" != "success" ]]; then
+            echo "Unable to determine whether this change requires tests."
+            exit 1
+          fi
+
+          if [[ "${{ needs.scope.outputs.run-tests }}" == "false" ]]; then
+            echo "Documentation-only change: Stack and Cabal tests are not required."
+            exit 0
+          fi
+
+          if [[ "${{ needs.cabal.result }}" != "success" ]]; then
+            echo "Cabal matrix result: ${{ needs.cabal.result }}"
+            exit 1
+          fi
+
+          if [[ "${{ needs.stack.result }}" != "success" ]]; then
+            echo "Stack matrix result: ${{ needs.stack.result }}"
+            exit 1
+          fi
+
+          echo "Stack and Cabal matrices passed."
