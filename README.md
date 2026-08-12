@@ -1,7 +1,5 @@
 # README
-[![cabal
-build](https://github.com/ozataman/csv-conduit/actions/workflows/cabal.yml/badge.svg)](https://github.com/ozataman/csv-conduit/actions)
-[![stack build](https://github.com/ozataman/csv-conduit/actions/workflows/stack.yml/badge.svg)](https://github.com/ozataman/csv-conduit/actions)
+[![CI](https://github.com/ozataman/csv-conduit/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ozataman/csv-conduit/actions/workflows/ci.yml?query=branch%3Amaster)
 
 ## CSV Files and Haskell
 

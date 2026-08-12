@@ -1,7 +1,6 @@
 name: stack
 on:
-  - push
-  - pull_request
+  workflow_call:
 
 jobs:
   linux:
