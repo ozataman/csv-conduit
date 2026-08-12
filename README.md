@@ -104,7 +104,7 @@ import Data.CSV.Conduit
 import Data.Text (Text)
 
 myProcessor :: Monad m => ConduitT (MapRow Text) (MapRow Text) m ()
-myProcessor = undefined
+myProcessor = awaitForever yield
 
 -- Let's simply stream from a file, parse the CSV, reserialize it
 -- and push back into another file.
