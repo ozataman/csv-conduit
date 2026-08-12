@@ -117,7 +117,7 @@ import           Data.CSV.Conduit.Types
 -- >import Data.Text (Text)
 -- >
 -- >myProcessor :: Monad m => ConduitT (MapRow Text) (MapRow Text) m ()
--- >myProcessor = undefined
+-- >myProcessor = awaitForever yield
 -- >
 -- >test :: IO ()
 -- >test = runConduitRes $
